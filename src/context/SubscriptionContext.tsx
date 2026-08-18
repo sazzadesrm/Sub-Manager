@@ -21,6 +21,7 @@ import {
   COMMON_TAGS,
 } from '../data/subscriptionsData';
 import {
+  normalizeToDaily,
   normalizeToMonthly,
   normalizeToYearly,
   generateAlerts,
@@ -36,9 +37,23 @@ import {
   triggerTestNotification,
   getNotificationSupport,
 } from '../services/notificationService';
+import { authService, AuthUser } from '../services/authService';
 import confetti from 'canvas-confetti';
 
+export type AppTheme = 'munemind' | 'truva' | 'emerald' | 'ocean';
+
 interface SubscriptionContextType {
+  // Authentication & User State
+  currentUser: AuthUser | null;
+  isAuthenticated: boolean;
+  isAuthLoading: boolean;
+  signIn: (email: string, pass: string) => Promise<AuthUser>;
+  signUp: (name: string, email: string, pass: string) => Promise<AuthUser>;
+  signOut: () => void;
+  forgotPassword: (email: string) => Promise<{ code: string; message: string }>;
+  resetPassword: (email: string, code: string, newPass: string) => Promise<boolean>;
+
+  // Subscriptions dataset (Isolated per user)
   subscriptions: Subscription[];
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
@@ -46,6 +61,8 @@ interface SubscriptionContextType {
   setActiveTab: (tab: AppTab) => void;
   darkMode: boolean;
   setDarkMode: (val: boolean | ((prev: boolean) => boolean)) => void;
+  theme: AppTheme;
+  setTheme: (theme: AppTheme) => void;
   currency: string;
   setCurrency: (code: string) => void;
   
@@ -99,9 +116,7 @@ interface SubscriptionContextType {
   isModalOpen: boolean;
   setIsModalOpen: (open: boolean) => void;
 
-  // RBAC & User Management
-  currentUser: TeamMember;
-  setCurrentUser: (user: TeamMember) => void;
+  // RBAC & Team
   teamMembers: TeamMember[];
   inviteTeamMember: (name: string, email: string, role: UserRole) => void;
   updateTeamMemberRole: (id: string, newRole: UserRole) => void;
@@ -114,13 +129,10 @@ interface SubscriptionContextType {
   updateEmailTemplate: (id: string, updated: Partial<AutomatedEmailTemplate>) => void;
   sendEmailSimulation: (templateId: string, customRecipient?: string) => boolean;
 
-  // Checkout modal
-  isCheckoutOpen: boolean;
-  setIsCheckoutOpen: (open: boolean) => void;
-
   // Aggregated Stats
   stats: {
     totalMonthlySpend: number;
+    totalDailySpend: number;
     totalYearlySpend: number;
     activeCount: number;
     pausedCount: number;
@@ -137,70 +149,85 @@ interface SubscriptionContextType {
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'submanager_subscriptions_v2';
-const SETTINGS_KEY = 'submanager_settings_v2';
-const TEAM_KEY = 'submanager_team_v2';
-const EMAILS_KEY = 'submanager_emails_v2';
-const LOGS_KEY = 'submanager_logs_v2';
+const GLOBAL_SETTINGS_KEY = 'submanager_global_settings_v3';
 
 export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch {
-      // Fallback
-    }
-    return INITIAL_SUBSCRIPTIONS;
-  });
+  // Auth state
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => authService.getCurrentUser());
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
 
+  // Settings State
   const [viewMode, setViewMode] = useState<ViewMode>('responsive');
   const [activeTab, setActiveTab] = useState<AppTab>('dashboard');
+  const [theme, setTheme] = useState<AppTheme>(() => {
+    try {
+      const saved = localStorage.getItem(GLOBAL_SETTINGS_KEY);
+      if (saved) return JSON.parse(saved).theme || 'munemind';
+    } catch {}
+    return 'munemind';
+  });
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     try {
-      const saved = localStorage.getItem(SETTINGS_KEY);
-      if (saved) {
-        return JSON.parse(saved).darkMode ?? false;
-      }
+      const saved = localStorage.getItem(GLOBAL_SETTINGS_KEY);
+      if (saved) return JSON.parse(saved).darkMode ?? false;
     } catch {}
     return false;
   });
   const [currency, setCurrency] = useState<string>(() => {
     try {
-      const saved = localStorage.getItem(SETTINGS_KEY);
-      if (saved) {
-        return JSON.parse(saved).currency ?? 'BDT';
-      }
+      const saved = localStorage.getItem(GLOBAL_SETTINGS_KEY);
+      if (saved) return JSON.parse(saved).currency ?? 'BDT';
     } catch {}
     return 'BDT';
   });
+
+  // User-isolated Subscriptions State
+  const getUserSubsStorageKey = (userId: string) => `submanager_user_${userId}_subs_v3`;
+  const getUserTeamStorageKey = (userId: string) => `submanager_user_${userId}_team_v3`;
+  const getUserLogsStorageKey = (userId: string) => `submanager_user_${userId}_logs_v3`;
+
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>(() => {
+    const user = authService.getCurrentUser();
+    if (!user) return [];
+    try {
+      const userKey = `submanager_user_${user.id}_subs_v3`;
+      const saved = localStorage.getItem(userKey);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+      // Demo accounts seed initial dataset on first visit
+      if (user.email === 'sazzadmbstu@gmail.com' || user.email === 'john@sublytics.io') {
+        localStorage.setItem(userKey, JSON.stringify(INITIAL_SUBSCRIPTIONS));
+        return INITIAL_SUBSCRIPTIONS;
+      }
+    } catch {}
+    return [];
+  });
+
   const [dismissedAlertIds, setDismissedAlertIds] = useState<string[]>([]);
 
-  // RBAC & Team state
+  // RBAC & Team state (User scoped)
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>(() => {
+    const user = authService.getCurrentUser();
+    if (!user) return [];
     try {
-      const saved = localStorage.getItem(TEAM_KEY);
+      const key = `submanager_user_${user.id}_team_v3`;
+      const saved = localStorage.getItem(key);
       if (saved) return JSON.parse(saved);
     } catch {}
     return INITIAL_TEAM_MEMBERS;
   });
-  const [currentUser, setCurrentUser] = useState<TeamMember>(() => teamMembers[0] || INITIAL_TEAM_MEMBERS[0]);
 
   // Automated Email Templates
-  const [emailTemplates, setEmailTemplates] = useState<AutomatedEmailTemplate[]>(() => {
-    try {
-      const saved = localStorage.getItem(EMAILS_KEY);
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return INITIAL_EMAIL_TEMPLATES;
-  });
+  const [emailTemplates, setEmailTemplates] = useState<AutomatedEmailTemplate[]>(INITIAL_EMAIL_TEMPLATES);
 
-  // Audit Logs
+  // Audit Logs (User scoped)
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => {
+    const user = authService.getCurrentUser();
+    if (!user) return [];
     try {
-      const saved = localStorage.getItem(LOGS_KEY);
+      const key = `submanager_user_${user.id}_logs_v3`;
+      const saved = localStorage.getItem(key);
       if (saved) return JSON.parse(saved);
     } catch {}
     return INITIAL_AUDIT_LOGS;
@@ -237,38 +264,77 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // Modal edit/add state
   const [editingSubscription, setEditingSubscription] = useState<Subscription | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
-  // Sync to localStorage
+  // Load user data whenever currentUser changes
   useEffect(() => {
+    if (!currentUser) {
+      setSubscriptions([]);
+      setTeamMembers([]);
+      setAuditLogs([]);
+      return;
+    }
+
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(subscriptions));
+      const subsKey = getUserSubsStorageKey(currentUser.id);
+      const teamKey = getUserTeamStorageKey(currentUser.id);
+      const logsKey = getUserLogsStorageKey(currentUser.id);
+
+      const savedSubs = localStorage.getItem(subsKey);
+      if (savedSubs) {
+        setSubscriptions(JSON.parse(savedSubs));
+      } else if (currentUser.email === 'sazzadmbstu@gmail.com' || currentUser.email === 'john@sublytics.io') {
+        // Pre-fill demo data for demo users
+        localStorage.setItem(subsKey, JSON.stringify(INITIAL_SUBSCRIPTIONS));
+        setSubscriptions(INITIAL_SUBSCRIPTIONS);
+      } else {
+        // New users ALWAYS start completely empty
+        localStorage.setItem(subsKey, JSON.stringify([]));
+        setSubscriptions([]);
+      }
+
+      const savedTeam = localStorage.getItem(teamKey);
+      setTeamMembers(savedTeam ? JSON.parse(savedTeam) : INITIAL_TEAM_MEMBERS);
+
+      const savedLogs = localStorage.getItem(logsKey);
+      setAuditLogs(savedLogs ? JSON.parse(savedLogs) : INITIAL_AUDIT_LOGS);
+    } catch (e) {
+      console.error('Error loading user-scoped data', e);
+    }
+  }, [currentUser?.id]);
+
+  // Persist subscriptions scoped to current user ID
+  useEffect(() => {
+    if (!currentUser) return;
+    try {
+      const subsKey = getUserSubsStorageKey(currentUser.id);
+      localStorage.setItem(subsKey, JSON.stringify(subscriptions));
     } catch (e) {
       console.error('Error saving subscriptions', e);
     }
-  }, [subscriptions]);
+  }, [subscriptions, currentUser?.id]);
 
+  // Persist team & logs scoped to current user ID
   useEffect(() => {
+    if (!currentUser) return;
     try {
-      localStorage.setItem(TEAM_KEY, JSON.stringify(teamMembers));
+      localStorage.setItem(getUserTeamStorageKey(currentUser.id), JSON.stringify(teamMembers));
     } catch {}
-  }, [teamMembers]);
+  }, [teamMembers, currentUser?.id]);
 
   useEffect(() => {
+    if (!currentUser) return;
     try {
-      localStorage.setItem(EMAILS_KEY, JSON.stringify(emailTemplates));
+      localStorage.setItem(getUserLogsStorageKey(currentUser.id), JSON.stringify(auditLogs));
     } catch {}
-  }, [emailTemplates]);
+  }, [auditLogs, currentUser?.id]);
 
+  // Persist global settings (theme, darkMode, currency)
   useEffect(() => {
     try {
-      localStorage.setItem(LOGS_KEY, JSON.stringify(auditLogs));
-    } catch {}
-  }, [auditLogs]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify({ darkMode, currency }));
+      localStorage.setItem(
+        GLOBAL_SETTINGS_KEY,
+        JSON.stringify({ darkMode, currency, theme })
+      );
     } catch (e) {
       console.error('Error saving settings', e);
     }
@@ -277,7 +343,48 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } else {
       document.documentElement.classList.remove('dark');
     }
-  }, [darkMode, currency]);
+  }, [darkMode, currency, theme]);
+
+  // Auth Operations
+  const signIn = async (emailInput: string, passInput: string): Promise<AuthUser> => {
+    setIsAuthLoading(true);
+    try {
+      const user = await authService.signIn(emailInput, passInput);
+      setCurrentUser(user);
+      return user;
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
+  const signUp = async (nameInput: string, emailInput: string, passInput: string): Promise<AuthUser> => {
+    setIsAuthLoading(true);
+    try {
+      const user = await authService.signUp(nameInput, emailInput, passInput);
+      // New user begins in completely empty state
+      setSubscriptions([]);
+      setCurrentUser(user);
+      return user;
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
+  const signOut = () => {
+    authService.signOut();
+    setCurrentUser(null);
+    setSubscriptions([]);
+    setAuditLogs([]);
+    setActiveTab('dashboard');
+  };
+
+  const forgotPassword = async (emailInput: string) => {
+    return authService.requestPasswordReset(emailInput);
+  };
+
+  const resetPassword = async (emailInput: string, codeInput: string, newPassInput: string) => {
+    return authService.completePasswordReset(emailInput, codeInput, newPassInput);
+  };
 
   // Extract all distinct tags from subscriptions
   const availableTags = useMemo(() => {
@@ -288,7 +395,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return Array.from(tagSet).filter(Boolean);
   }, [subscriptions]);
 
-  // Fetch live exchange rates on mount and on currency change
+  // Fetch live exchange rates
   const refreshExchangeRates = useCallback(async () => {
     setIsRatesLoading(true);
     try {
@@ -310,11 +417,11 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   // Push notifications checking
   useEffect(() => {
-    if (notificationPermission === 'granted') {
+    if (notificationPermission === 'granted' && subscriptions.length > 0) {
       checkAndNotify24hRenewals(subscriptions, currency);
     }
     const timer = setInterval(() => {
-      if (getNotificationPermission() === 'granted') {
+      if (getNotificationPermission() === 'granted' && subscriptions.length > 0) {
         checkAndNotify24hRenewals(subscriptions, currency);
       }
     }, 1000 * 60 * 15);
@@ -352,6 +459,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   const addAuditLog = (action: string, details: string, type: AuditLogEntry['type']) => {
+    if (!currentUser) return;
     const newLog: AuditLogEntry = {
       id: `log-${Date.now()}`,
       timestamp: new Date().toLocaleString(),
@@ -441,9 +549,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const resetToSampleData = () => {
     setSubscriptions(INITIAL_SUBSCRIPTIONS);
     setDismissedAlertIds([]);
-    setTeamMembers(INITIAL_TEAM_MEMBERS);
-    setEmailTemplates(INITIAL_EMAIL_TEMPLATES);
-    addAuditLog('Reset Workspace', 'Restored sample subscriptions and configuration dataset', 'security');
+    addAuditLog('Reset Workspace', 'Restored sample subscriptions dataset', 'security');
   };
 
   const importSubscriptions = (data: Subscription[]): boolean => {
@@ -533,11 +639,11 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (!template) return false;
 
     setEmailTemplates(prev =>
-      prev.map(t => (t.id === templateId ? { ...t, lastSentCount: t.lastSentCount + 1 } : t))
+      prev.map(t => (t.id === templateId ? { ...t, lastSentCount: (t.lastSentCount || 0) + 1 } : t))
     );
     addAuditLog(
       'Dispatched Automated Email',
-      `Sent "${template.title}" to ${customRecipient || 'customer@example.com'}`,
+      `Sent "${template.name}" to ${customRecipient || 'customer@example.com'}`,
       'email'
     );
     confetti({ particleCount: 35, spread: 60, origin: { y: 0.8 } });
@@ -547,6 +653,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // Stats calculation
   const stats = useMemo(() => {
     let totalMonthlySpend = 0;
+    let totalDailySpend = 0;
     let totalYearlySpend = 0;
     let activeCount = 0;
     let pausedCount = 0;
@@ -563,20 +670,17 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     subscriptions.forEach(sub => {
       const isSubActive = sub.status === 'active' || sub.status === 'trial';
+      const daily = normalizeToDaily(sub.cost, sub.billingCycle);
       const monthly = normalizeToMonthly(sub.cost, sub.billingCycle);
       const yearly = normalizeToYearly(sub.cost, sub.billingCycle);
 
-      // Low usage / zombie detection
+      // Low usage detection
       const notesLower = (sub.notes || '').toLowerCase();
       const isLowUsageByNotes =
         notesLower.includes('rarely') ||
-        notesLower.includes('haven\'t opened') ||
-        notesLower.includes('haven\'t logged') ||
         notesLower.includes('unused') ||
         notesLower.includes('dormant') ||
         notesLower.includes('infrequent') ||
-        notesLower.includes('forgot') ||
-        notesLower.includes('waste') ||
         notesLower.includes('cancel');
 
       const isLowUsage = sub.usageFrequency === 'rarely' || sub.usageFrequency === 'unused' || isLowUsageByNotes;
@@ -586,6 +690,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
 
       if (isSubActive) {
+        totalDailySpend += daily;
         totalMonthlySpend += monthly;
         totalYearlySpend += yearly;
         activeCount += 1;
@@ -635,6 +740,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     return {
       totalMonthlySpend,
+      totalDailySpend,
       totalYearlySpend,
       activeCount,
       pausedCount,
@@ -652,6 +758,14 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   return (
     <SubscriptionContext.Provider
       value={{
+        currentUser,
+        isAuthenticated: !!currentUser,
+        isAuthLoading,
+        signIn,
+        signUp,
+        signOut,
+        forgotPassword,
+        resetPassword,
         subscriptions,
         viewMode,
         setViewMode,
@@ -659,6 +773,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setActiveTab,
         darkMode,
         setDarkMode,
+        theme,
+        setTheme,
         currency,
         setCurrency,
         exchangeRates,
@@ -699,8 +815,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setEditingSubscription,
         isModalOpen,
         setIsModalOpen,
-        currentUser,
-        setCurrentUser,
         teamMembers,
         inviteTeamMember,
         updateTeamMemberRole,
@@ -710,8 +824,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         emailTemplates,
         updateEmailTemplate,
         sendEmailSimulation,
-        isCheckoutOpen,
-        setIsCheckoutOpen,
         stats,
       }}
     >

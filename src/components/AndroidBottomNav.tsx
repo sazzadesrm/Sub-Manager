@@ -3,14 +3,13 @@ import { useSubscriptions } from '../context/SubscriptionContext';
 import { AppTab } from '../types';
 import {
   LayoutDashboard,
-  Calendar,
+  CreditCard,
+  Wallet,
   PieChart,
-  TrendingUp,
-  Sparkles,
-  Mail,
   Users,
+  FileText,
   Settings,
-  CreditCard
+  Sparkles
 } from 'lucide-react';
 
 interface AndroidBottomNavProps {
@@ -33,9 +32,9 @@ export const AndroidBottomNav: React.FC<AndroidBottomNavProps> = ({ className = 
       icon: <CreditCard size={19} />,
     },
     {
-      id: 'calendar',
-      label: 'Calendar',
-      icon: <Calendar size={19} />,
+      id: 'payment',
+      label: 'Payment',
+      icon: <Wallet size={19} />,
     },
     {
       id: 'analytics',
@@ -43,24 +42,14 @@ export const AndroidBottomNav: React.FC<AndroidBottomNavProps> = ({ className = 
       icon: <PieChart size={19} />,
     },
     {
-      id: 'forecast',
-      label: 'Forecast',
-      icon: <TrendingUp size={19} />,
-    },
-    {
-      id: 'audit',
-      label: 'Optimize',
-      icon: <Sparkles size={19} />,
-    },
-    {
-      id: 'emails',
-      label: 'Emails',
-      icon: <Mail size={19} />,
-    },
-    {
-      id: 'team',
-      label: 'Team',
+      id: 'customer',
+      label: 'Customer',
       icon: <Users size={19} />,
+    },
+    {
+      id: 'reports',
+      label: 'Reports',
+      icon: <FileText size={19} />,
     },
     {
       id: 'settings',
@@ -82,7 +71,7 @@ export const AndroidBottomNav: React.FC<AndroidBottomNavProps> = ({ className = 
             key={item.id}
             id={`android-nav-${item.id}`}
             onClick={() => setActiveTab(item.id)}
-            className="flex flex-col items-center justify-center min-w-[58px] flex-1 py-1 transition-all group relative focus:outline-none shrink-0"
+            className="flex flex-col items-center justify-center min-w-[54px] flex-1 py-1 transition-all group relative focus:outline-none shrink-0"
           >
             {/* Active Pill Indicator (Material 3 Style) */}
             <div

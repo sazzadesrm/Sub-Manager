@@ -1,5 +1,20 @@
 import { Subscription, BillingCycle, RenewalAlert } from '../types';
 
+export function normalizeToDaily(cost: number, cycle: BillingCycle): number {
+  switch (cycle) {
+    case 'weekly':
+      return cost / 7;
+    case 'monthly':
+      return cost / 30.417; // Standard average monthly days
+    case 'quarterly':
+      return cost / 91.25;
+    case 'yearly':
+      return cost / 365.25;
+    default:
+      return cost / 30.417;
+  }
+}
+
 export function normalizeToMonthly(cost: number, cycle: BillingCycle): number {
   switch (cycle) {
     case 'weekly':
@@ -101,6 +116,7 @@ export function exportSubscriptionsToCSV(subscriptions: Subscription[]): void {
     'Cost',
     'Currency',
     'Billing Cycle',
+    'Daily Equivalent ($)',
     'Normalized Monthly ($)',
     'Normalized Yearly ($)',
     'Next Renewal Date',
@@ -119,6 +135,7 @@ export function exportSubscriptionsToCSV(subscriptions: Subscription[]): void {
     sub.cost.toFixed(2),
     `"${sub.currency}"`,
     `"${sub.billingCycle}"`,
+    normalizeToDaily(sub.cost, sub.billingCycle).toFixed(2),
     normalizeToMonthly(sub.cost, sub.billingCycle).toFixed(2),
     normalizeToYearly(sub.cost, sub.billingCycle).toFixed(2),
     `"${sub.nextRenewalDate}"`,

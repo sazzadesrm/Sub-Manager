@@ -1,7 +1,8 @@
 import React from 'react';
 import { useSubscriptions } from '../context/SubscriptionContext';
+import { SubManagerLogo } from './SubManagerLogo';
 import { AndroidBottomNav } from './AndroidBottomNav';
-import { Plus, Wifi, Battery, Signal, Bell, Moon, Sun, Settings } from 'lucide-react';
+import { Plus, Wifi, Battery, Signal, Moon, Sun, Settings, LogOut } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface AndroidFrameProps {
@@ -9,7 +10,15 @@ interface AndroidFrameProps {
 }
 
 export const AndroidFrame: React.FC<AndroidFrameProps> = ({ children }) => {
-  const { setIsModalOpen, setEditingSubscription, darkMode, setDarkMode, setActiveTab } = useSubscriptions();
+  const {
+    setIsModalOpen,
+    setEditingSubscription,
+    darkMode,
+    setDarkMode,
+    setActiveTab,
+    currentUser,
+    signOut
+  } = useSubscriptions();
 
   const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
@@ -36,28 +45,30 @@ export const AndroidFrame: React.FC<AndroidFrameProps> = ({ children }) => {
           {/* Android Top App Bar (Material Design 3) */}
           <div className="px-4 py-2.5 bg-neutral-50/90 dark:bg-neutral-950/90 backdrop-blur-xs border-b border-neutral-200/60 dark:border-neutral-800 flex items-center justify-between z-20 shrink-0">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-xs shadow-xs">
-                S
-              </div>
-              <span className="font-bold text-sm text-neutral-900 dark:text-white">
-                SubManager
-              </span>
+              <SubManagerLogo size={24} showText={true} />
             </div>
 
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setDarkMode(prev => !prev)}
-                className="p-2 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white rounded-full transition-colors"
+                className="p-1.5 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white rounded-full transition-colors"
                 title="Toggle Dark Mode"
               >
-                {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+                {darkMode ? <Sun size={15} /> : <Moon size={15} />}
               </button>
               <button
                 onClick={() => setActiveTab('settings')}
-                className="p-2 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white rounded-full transition-colors"
+                className="p-1.5 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white rounded-full transition-colors"
                 title="Settings"
               >
-                <Settings size={16} />
+                <Settings size={15} />
+              </button>
+              <button
+                onClick={signOut}
+                className="p-1.5 text-neutral-400 hover:text-rose-500 rounded-full transition-colors"
+                title="Sign Out"
+              >
+                <LogOut size={15} />
               </button>
             </div>
           </div>
@@ -76,7 +87,7 @@ export const AndroidFrame: React.FC<AndroidFrameProps> = ({ children }) => {
               setEditingSubscription(null);
               setIsModalOpen(true);
             }}
-            className="absolute right-5 bottom-20 z-40 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl shadow-xl shadow-blue-600/40 flex items-center justify-center transition-all focus:outline-none focus:ring-4 focus:ring-blue-500/30"
+            className="absolute right-5 bottom-20 z-40 w-14 h-14 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-2xl shadow-xl shadow-blue-600/40 flex items-center justify-center transition-all focus:outline-none focus:ring-4 focus:ring-blue-500/30 cursor-pointer"
             aria-label="Add Subscription"
           >
             <Plus size={24} strokeWidth={2.5} />

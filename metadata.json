@@ -1,6 +1,6 @@
 {
-  "name": "Subscription Manager",
-  "description": "Subscription management application with expense tracking, renewal alerts, category analytics, and optimized dual Web and Android UI/UX.",
+  "name": "Sub Manager",
+  "description": "Subscription management application with expense tracking, daily cost breakdown, theme management, renewal alerts, and secure multi-user authentication.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

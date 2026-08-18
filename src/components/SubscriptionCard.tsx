@@ -2,7 +2,13 @@ import React from 'react';
 import { Subscription } from '../types';
 import { useSubscriptions } from '../context/SubscriptionContext';
 import { ServiceIcon } from './ServiceIcon';
-import { formatCurrency, getDaysUntil, formatDaysRemaining, normalizeToMonthly } from '../utils/calculations';
+import {
+  formatCurrency,
+  getDaysUntil,
+  formatDaysRemaining,
+  normalizeToMonthly,
+  normalizeToDaily
+} from '../utils/calculations';
 import {
   Calendar,
   CreditCard,
@@ -16,7 +22,8 @@ import {
   AlertCircle,
   Repeat,
   Tag,
-  Activity
+  Activity,
+  Coins
 } from 'lucide-react';
 
 interface SubscriptionCardProps {
@@ -43,6 +50,7 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
   const { text: daysText, isSoon, isPast } = formatDaysRemaining(daysUntil);
   const isPaused = subscription.status === 'paused';
   const isTrial = subscription.status === 'trial' || subscription.isTrial;
+  const dailyCost = normalizeToDaily(subscription.cost, subscription.billingCycle);
 
   const handleEdit = () => {
     setEditingSubscription(subscription);
@@ -59,7 +67,7 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
   return (
     <div
       id={`sub-card-${subscription.id}`}
-      className={`group relative bg-white dark:bg-neutral-900 rounded-2xl border transition-all duration-200 shadow-xs hover:shadow-md ${
+      className={`group relative bg-white dark:bg-neutral-900 rounded-2xl border transition-all duration-200 shadow-2xs hover:shadow-md ${
         isPaused
           ? 'opacity-65 border-neutral-200 dark:border-neutral-800'
           : isSoon && daysUntil <= 2
@@ -94,6 +102,11 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
                   <ExternalLink size={12} />
                 </a>
               )}
+              {isLowUsage && (
+                <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-1.5 py-0.5 rounded-md">
+                  <Activity size={10} /> Low Usage
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -104,11 +117,6 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
               <span className="text-xs text-neutral-500 dark:text-neutral-400 capitalize">
                 {subscription.billingCycle}
               </span>
-              {isLowUsage && (
-                <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-1.5 py-0.5 rounded-md">
-                  <Activity size={10} /> Low Usage
-                </span>
-              )}
             </div>
           </div>
         </div>
@@ -175,8 +183,8 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
         </div>
       </div>
 
-      {/* Middle row: Price and relative monthly calculation */}
-      <div className="mt-4 flex items-baseline justify-between">
+      {/* Middle row: Price and relative monthly calculation + Daily Cost Badge */}
+      <div className="mt-4 flex items-baseline justify-between flex-wrap gap-2">
         <div>
           <div className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white tracking-tight">
             {formatCurrency(subscription.cost, subscription.currency || currency)}
@@ -191,8 +199,13 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
           )}
         </div>
 
-        {/* Status badges */}
-        <div className="flex items-center gap-1.5">
+        {/* Daily Cost Badge & Status */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/50">
+            <span>{formatCurrency(dailyCost, subscription.currency || currency)}</span>
+            <span className="text-[9px] opacity-75">/day</span>
+          </span>
+
           {isPaused && (
             <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">
               Paused

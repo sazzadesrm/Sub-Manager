@@ -69,14 +69,17 @@ export type ViewMode = 'responsive' | 'web' | 'android';
 export type AppTab =
   | 'dashboard'
   | 'subscriptions'
-  | 'calendar'
+  | 'payment'
   | 'analytics'
+  | 'customer'
+  | 'reports'
+  | 'settings'
+  | 'calendar'
   | 'forecast'
   | 'audit'
   | 'emails'
   | 'team'
-  | 'checkout'
-  | 'settings';
+  | 'checkout';
 
 export type UserRole = 'admin' | 'finance' | 'support' | 'sales' | 'owner';
 

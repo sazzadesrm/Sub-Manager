@@ -2,7 +2,13 @@ import React from 'react';
 import { Subscription } from '../types';
 import { useSubscriptions } from '../context/SubscriptionContext';
 import { ServiceIcon } from './ServiceIcon';
-import { formatCurrency, getDaysUntil, formatDaysRemaining, normalizeToMonthly } from '../utils/calculations';
+import {
+  formatCurrency,
+  getDaysUntil,
+  formatDaysRemaining,
+  normalizeToMonthly,
+  normalizeToDaily
+} from '../utils/calculations';
 import {
   ArrowUpDown,
   ExternalLink,
@@ -12,9 +18,8 @@ import {
   Play,
   CheckCircle2,
   Calendar,
-  Check,
-  ChevronDown,
-  Activity
+  Activity,
+  Coins
 } from 'lucide-react';
 
 interface SubscriptionTableProps {
@@ -51,7 +56,7 @@ export const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ subscripti
   };
 
   return (
-    <div className="w-full overflow-x-auto rounded-2xl border border-neutral-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-xs">
+    <div className="w-full overflow-x-auto rounded-2xl border border-neutral-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-2xs">
       <table className="w-full text-left border-collapse text-sm">
         <thead>
           <tr className="border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50/70 dark:bg-neutral-800/40 text-neutral-500 dark:text-neutral-400 text-xs font-semibold uppercase tracking-wider">
@@ -84,6 +89,13 @@ export const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ subscripti
                 <ArrowUpDown size={12} className={sortBy === 'cost' ? 'text-blue-600 dark:text-blue-400' : ''} />
               </div>
             </th>
+            {/* Granular Daily Cost Badge Column */}
+            <th className="py-3.5 px-4">
+              <div className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400">
+                <Coins size={13} />
+                <span>Daily Cost</span>
+              </div>
+            </th>
             <th className="py-3.5 px-4">Status</th>
             <th className="py-3.5 px-4 text-right">Actions</th>
           </tr>
@@ -94,6 +106,7 @@ export const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ subscripti
             const { text: daysText, isSoon } = formatDaysRemaining(daysUntil);
             const isPaused = sub.status === 'paused';
             const isTrial = sub.status === 'trial' || sub.isTrial;
+            const dailyCost = normalizeToDaily(sub.cost, sub.billingCycle);
             const isLowUsage =
               sub.usageFrequency === 'rarely' ||
               sub.usageFrequency === 'unused' ||
@@ -174,7 +187,7 @@ export const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ subscripti
                 </td>
 
                 {/* Billing Cycle */}
-                <td className="py-3 px-4 hidden lg:table-cell capitalize text-neutral-600 dark:text-neutral-400 text-xs">
+                <td className="py-3 px-4 hidden lg:table-cell capitalize text-neutral-600 dark:text-neutral-400 text-xs font-medium">
                   {sub.billingCycle}
                 </td>
 
@@ -198,7 +211,7 @@ export const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ subscripti
                   </div>
                 </td>
 
-                {/* Cost */}
+                {/* Cost (Nominal & Normalized) */}
                 <td className="py-3 px-4">
                   <div className="font-semibold text-neutral-900 dark:text-neutral-100">
                     {formatCurrency(sub.cost, sub.currency || currency)}
@@ -211,6 +224,14 @@ export const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ subscripti
                       {formatCurrency(normalizeToMonthly(sub.cost, sub.billingCycle), sub.currency || currency)}/mo
                     </div>
                   )}
+                </td>
+
+                {/* Daily Cost Badge (Requested Field for Financial Transparency) */}
+                <td className="py-3 px-4">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/60 shadow-2xs">
+                    <span>{formatCurrency(dailyCost, sub.currency || currency)}</span>
+                    <span className="text-[10px] font-medium opacity-75">/day</span>
+                  </span>
                 </td>
 
                 {/* Status */}
