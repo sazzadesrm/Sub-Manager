@@ -2,6 +2,8 @@ export type BillingCycle = 'weekly' | 'monthly' | 'quarterly' | 'yearly';
 
 export type SubscriptionStatus = 'active' | 'paused' | 'trial' | 'cancelled';
 
+export type UsageFrequency = 'daily' | 'weekly' | 'monthly' | 'rarely' | 'unused';
+
 export type SubscriptionCategory =
   | 'Streaming'
   | 'Software'
@@ -12,6 +14,7 @@ export type SubscriptionCategory =
   | 'Utilities'
   | 'News & Reading'
   | 'Shopping & Delivery'
+  | 'Business & SaaS'
   | 'Other';
 
 export interface Subscription {
@@ -27,12 +30,14 @@ export interface Subscription {
   status: SubscriptionStatus;
   isTrial?: boolean;
   trialEndDate?: string;
-  alertDaysBefore: number; // e.g., 1, 3, 7
-  autoRenew: boolean;
+  alertDaysBefore?: number;
+  autoRenew?: boolean;
   notes?: string;
   websiteUrl?: string;
   color: string;
   iconName?: string; // Lucide icon identifier
+  tags?: string[]; // Custom user tags like #Work, #Personal, #Team, #Essential
+  usageFrequency?: UsageFrequency; // Tracking activity/usage frequency
 }
 
 export interface RenewalAlert {
@@ -57,7 +62,73 @@ export interface PresetSubscription {
   websiteUrl: string;
   iconName: string;
   description: string;
+  tags?: string[];
 }
 
 export type ViewMode = 'responsive' | 'web' | 'android';
-export type AppTab = 'dashboard' | 'subscriptions' | 'calendar' | 'analytics' | 'settings' | 'audit';
+export type AppTab =
+  | 'dashboard'
+  | 'subscriptions'
+  | 'calendar'
+  | 'analytics'
+  | 'forecast'
+  | 'audit'
+  | 'emails'
+  | 'team'
+  | 'checkout'
+  | 'settings';
+
+export type UserRole = 'admin' | 'finance' | 'support' | 'sales' | 'owner';
+
+export interface TeamMemberPermissions {
+  canManageSubscriptions?: boolean;
+  canViewInvoices?: boolean;
+  canManageBillingMethods?: boolean;
+  canManageTeam?: boolean;
+  canRunAudits?: boolean;
+  canSendDunning?: boolean;
+  canManageBilling?: boolean;
+  canExportReports?: boolean;
+  canEditSubscriptions?: boolean;
+  canAccessCheckout?: boolean;
+  canSendEmails?: boolean;
+  canManageUsers?: boolean;
+}
+
+export interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  avatar?: string;
+  department?: string;
+  status: 'active' | 'invited' | 'suspended';
+  lastActive?: string;
+  createdAt?: string;
+  permissions: TeamMemberPermissions;
+}
+
+export interface AutomatedEmailTemplate {
+  id: string;
+  type: 'dunning_failed_payment' | 'renewal_notice' | 'payment_confirmation' | 'invoice_reminder' | string;
+  name: string;
+  subject: string;
+  description: string;
+  body: string;
+  trigger: string;
+  enabled: boolean;
+  daysBefore?: number;
+  lastSentCount?: number;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  user: string;
+  action: string;
+  details?: string;
+  category?: 'billing' | 'security' | 'subscription' | 'email' | 'user';
+  userName?: string;
+  userRole?: UserRole;
+  type?: string;
+}

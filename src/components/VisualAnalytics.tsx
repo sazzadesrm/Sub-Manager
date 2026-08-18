@@ -14,7 +14,8 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { ServiceIcon } from './ServiceIcon';
-import { TrendingUp, PieChart as PieIcon, BarChart3, AlertCircle, ArrowUpRight, CheckCircle2 } from 'lucide-react';
+import { D3CategoryTreemap } from './D3CategoryTreemap';
+import { TrendingUp, PieChart as PieIcon, BarChart3, AlertCircle, ArrowUpRight, CheckCircle2, Layers } from 'lucide-react';
 
 export const VisualAnalytics: React.FC = () => {
   const { subscriptions, stats, currency, darkMode } = useSubscriptions();
@@ -64,20 +65,6 @@ export const VisualAnalytics: React.FC = () => {
       totalMonthly: Number(data.totalMonthly.toFixed(2)),
     }));
 
-  // 6-Month Projected Outflow Chart
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const currentMonthIdx = new Date().getMonth();
-  const projectedMonths = Array.from({ length: 6 }).map((_, i) => {
-    const mIdx = (currentMonthIdx + i) % 12;
-    const monthName = months[mIdx];
-    // Baseline monthly subscriptions
-    let monthTotal = stats.totalMonthlySpend;
-    return {
-      month: monthName,
-      estimatedSpend: Number(monthTotal.toFixed(2)),
-    };
-  });
-
   const customTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0];
@@ -112,7 +99,10 @@ export const VisualAnalytics: React.FC = () => {
         </div>
       </div>
 
-      {/* Grid of charts */}
+      {/* D3 TREEMAP BREAKDOWN SECTION */}
+      <D3CategoryTreemap />
+
+      {/* Grid of secondary charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Category Breakdown (Donut + Progress) */}
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 rounded-3xl p-5 sm:p-6 shadow-xs">
@@ -190,66 +180,39 @@ export const VisualAnalytics: React.FC = () => {
           </div>
         </div>
 
-        {/* Projected Monthly Outflow Bar Chart */}
+        {/* Billing Cycle breakdown */}
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="font-bold text-neutral-900 dark:text-white text-base sm:text-lg flex items-center gap-2">
                   <BarChart3 size={18} className="text-indigo-500" />
-                  6-Month Cash Outflow Projection
+                  Billing Cycles & Commitment Split
                 </h3>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                  Estimated recurring monthly charges
+                  Normalized monthly cost breakdown by payment rhythm
                 </p>
               </div>
             </div>
 
-            <div className="h-60 w-full mt-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={projectedMonths}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#262626' : '#f1f5f9'} />
-                  <XAxis
-                    dataKey="month"
-                    stroke={darkMode ? '#a3a3a3' : '#64748b'}
-                    fontSize={12}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    stroke={darkMode ? '#a3a3a3' : '#64748b'}
-                    fontSize={12}
-                    tickLine={false}
-                    tickFormatter={v => `$${v}`}
-                  />
-                  <Tooltip content={customTooltip} />
-                  <Bar
-                    dataKey="estimatedSpend"
-                    fill="#6366F1"
-                    radius={[6, 6, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+              {cycleData.map(c => (
+                <div
+                  key={c.name}
+                  className="bg-neutral-50 dark:bg-neutral-800/50 p-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 space-y-1"
+                >
+                  <div className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">
+                    {c.name} Frequency
+                  </div>
+                  <div className="text-lg font-bold text-neutral-900 dark:text-white">
+                    {c.count} service{c.count > 1 ? 's' : ''}
+                  </div>
+                  <div className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                    {formatCurrency(c.totalMonthly, currency)}/mo normalized
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
-
-          {/* Billing cycle stats cards */}
-          <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800">
-            {cycleData.map(c => (
-              <div
-                key={c.name}
-                className="bg-neutral-50 dark:bg-neutral-800/50 p-3 rounded-2xl border border-neutral-100 dark:border-neutral-800"
-              >
-                <div className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">
-                  {c.name} Plans
-                </div>
-                <div className="text-sm font-bold text-neutral-900 dark:text-white mt-0.5">
-                  {c.count} service{c.count > 1 ? 's' : ''}
-                </div>
-                <div className="text-xs text-neutral-600 dark:text-neutral-400">
-                  {formatCurrency(c.totalMonthly, currency)}/mo normalized
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </div>

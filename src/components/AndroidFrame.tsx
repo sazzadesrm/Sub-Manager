@@ -1,7 +1,7 @@
 import React from 'react';
 import { useSubscriptions } from '../context/SubscriptionContext';
 import { AndroidBottomNav } from './AndroidBottomNav';
-import { Plus, Wifi, Battery, Signal, Bell, Moon, Sun } from 'lucide-react';
+import { Plus, Wifi, Battery, Signal, Bell, Moon, Sun, Settings } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface AndroidFrameProps {
@@ -9,7 +9,7 @@ interface AndroidFrameProps {
 }
 
 export const AndroidFrame: React.FC<AndroidFrameProps> = ({ children }) => {
-  const { setIsModalOpen, setEditingSubscription, darkMode, setDarkMode, alerts } = useSubscriptions();
+  const { setIsModalOpen, setEditingSubscription, darkMode, setDarkMode, setActiveTab } = useSubscriptions();
 
   const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
@@ -44,13 +44,20 @@ export const AndroidFrame: React.FC<AndroidFrameProps> = ({ children }) => {
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               <button
                 onClick={() => setDarkMode(prev => !prev)}
                 className="p-2 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white rounded-full transition-colors"
                 title="Toggle Dark Mode"
               >
                 {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+              </button>
+              <button
+                onClick={() => setActiveTab('settings')}
+                className="p-2 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white rounded-full transition-colors"
+                title="Settings"
+              >
+                <Settings size={16} />
               </button>
             </div>
           </div>

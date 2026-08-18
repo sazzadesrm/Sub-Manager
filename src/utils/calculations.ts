@@ -157,8 +157,9 @@ export function exportSubscriptionsToJSON(subscriptions: Subscription[]): void {
   URL.revokeObjectURL(url);
 }
 
-export function formatCurrency(amount: number, currencyCode: string = 'USD'): string {
+export function formatCurrency(amount: number, currencyCode: string = 'BDT'): string {
   const symbols: Record<string, string> = {
+    BDT: '৳',
     USD: '$',
     EUR: '€',
     GBP: '£',
@@ -167,6 +168,6 @@ export function formatCurrency(amount: number, currencyCode: string = 'USD'): st
     JPY: '¥',
     INR: '₹',
   };
-  const sym = symbols[currencyCode] || '$';
-  return `${sym}${amount.toFixed(2)}`;
+  const sym = symbols[currencyCode] || symbols.BDT || '৳';
+  return `${sym}${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }

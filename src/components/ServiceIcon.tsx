@@ -1,25 +1,54 @@
 import React from 'react';
 import {
   Tv,
-  Music,
-  Bot,
-  Code,
-  Layout,
-  ShoppingBag,
-  Cloud,
-  Apple,
-  Palette,
-  Sparkles,
-  Video,
-  Gamepad2,
-  Dumbbell,
-  Wifi,
-  BookOpen,
-  CreditCard,
-  Zap,
-  Globe,
   Film,
-  FolderGit2
+  Video,
+  Music,
+  Radio,
+  Headphones,
+  Code,
+  Terminal,
+  FolderGit2,
+  Cpu,
+  Layers,
+  Shield,
+  Bot,
+  Sparkles,
+  Layout,
+  Palette,
+  Zap,
+  CheckCircle2,
+  FileText,
+  Mail,
+  MessageSquare,
+  Briefcase,
+  Cloud,
+  Database,
+  Server,
+  HardDrive,
+  Globe,
+  Gamepad2,
+  Gamepad,
+  Trophy,
+  Dumbbell,
+  Heart,
+  Activity,
+  Wifi,
+  Home,
+  Smartphone,
+  ShoppingBag,
+  Coffee,
+  Car,
+  Plane,
+  BookOpen,
+  Newspaper,
+  CreditCard,
+  Wallet,
+  DollarSign,
+  Coins,
+  Apple,
+  Tag,
+  Compass,
 } from 'lucide-react';
 
 interface ServiceIconProps {
@@ -30,6 +59,58 @@ interface ServiceIconProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
 }
+
+const ICON_COMPONENTS: Record<string, React.ComponentType<{ size: number; className?: string }>> = {
+  Tv,
+  Film,
+  Video,
+  Music,
+  Radio,
+  Headphones,
+  Code,
+  Terminal,
+  FolderGit2,
+  Cpu,
+  Layers,
+  Shield,
+  Bot,
+  Sparkles,
+  Layout,
+  Palette,
+  Zap,
+  CheckCircle2,
+  FileText,
+  Mail,
+  MessageSquare,
+  Briefcase,
+  Cloud,
+  Database,
+  Server,
+  HardDrive,
+  Globe,
+  Gamepad2,
+  Gamepad,
+  Trophy,
+  Dumbbell,
+  Heart,
+  Activity,
+  Wifi,
+  Home,
+  Smartphone,
+  ShoppingBag,
+  Coffee,
+  Car,
+  Plane,
+  BookOpen,
+  Newspaper,
+  CreditCard,
+  Wallet,
+  DollarSign,
+  Coins,
+  Apple,
+  Tag,
+  Compass,
+};
 
 export const ServiceIcon: React.FC<ServiceIconProps> = ({
   name,
@@ -57,56 +138,75 @@ export const ServiceIcon: React.FC<ServiceIconProps> = ({
 
   // Helper to render icon component by name or fallback by category
   const renderIcon = () => {
-    const lower = (name || '').toLowerCase();
-    const key = (iconName || '').toLowerCase();
+    // 1. Direct Lucide iconName match
+    if (iconName && ICON_COMPONENTS[iconName]) {
+      const CustomIcon = ICON_COMPONENTS[iconName];
+      return <CustomIcon size={currentIconSize} />;
+    }
 
-    if (key === 'tv' || lower.includes('netflix') || lower.includes('hulu') || lower.includes('disney') || lower.includes('hbo')) {
+    // 2. Case-insensitive key match
+    if (iconName) {
+      const foundKey = Object.keys(ICON_COMPONENTS).find(
+        k => k.toLowerCase() === iconName.toLowerCase()
+      );
+      if (foundKey && ICON_COMPONENTS[foundKey]) {
+        const CustomIcon = ICON_COMPONENTS[foundKey];
+        return <CustomIcon size={currentIconSize} />;
+      }
+    }
+
+    // 3. Service name keywords
+    const lower = (name || '').toLowerCase();
+    if (lower.includes('netflix') || lower.includes('hulu') || lower.includes('disney') || lower.includes('hbo')) {
       return <Tv size={currentIconSize} />;
     }
-    if (key === 'music' || lower.includes('spotify') || lower.includes('tidal') || lower.includes('pandora')) {
+    if (lower.includes('chorki') || lower.includes('hoichoi') || lower.includes('cinema') || lower.includes('movie')) {
+      return <Film size={currentIconSize} />;
+    }
+    if (lower.includes('spotify') || lower.includes('tidal') || lower.includes('music') || lower.includes('pandora')) {
       return <Music size={currentIconSize} />;
     }
-    if (key === 'bot' || lower.includes('chatgpt') || lower.includes('openai') || lower.includes('claude') || lower.includes('gemini')) {
+    if (lower.includes('chatgpt') || lower.includes('openai') || lower.includes('claude') || lower.includes('gemini')) {
       return <Bot size={currentIconSize} />;
     }
-    if (key === 'code' || lower.includes('github') || lower.includes('gitlab') || lower.includes('copilot') || lower.includes('replit')) {
+    if (lower.includes('github') || lower.includes('gitlab') || lower.includes('copilot') || lower.includes('replit')) {
       return <Code size={currentIconSize} />;
     }
-    if (key === 'layout' || lower.includes('figma') || lower.includes('sketch') || lower.includes('canva')) {
+    if (lower.includes('figma') || lower.includes('sketch') || lower.includes('canva')) {
       return <Layout size={currentIconSize} />;
     }
-    if (key === 'shoppingbag' || lower.includes('amazon') || lower.includes('prime') || lower.includes('walmart')) {
+    if (lower.includes('amazon') || lower.includes('prime') || lower.includes('walmart')) {
       return <ShoppingBag size={currentIconSize} />;
     }
-    if (key === 'cloud' || lower.includes('google one') || lower.includes('dropbox') || lower.includes('icloud') || lower.includes('aws')) {
+    if (lower.includes('google') || lower.includes('drive') || lower.includes('dropbox') || lower.includes('icloud') || lower.includes('aws')) {
       return <Cloud size={currentIconSize} />;
     }
-    if (key === 'apple' || lower.includes('apple')) {
+    if (lower.includes('apple')) {
       return <Apple size={currentIconSize} />;
     }
-    if (key === 'palette' || lower.includes('adobe') || lower.includes('creative cloud')) {
+    if (lower.includes('adobe') || lower.includes('photoshop')) {
       return <Palette size={currentIconSize} />;
     }
-    if (key === 'sparkles' || lower.includes('midjourney') || lower.includes('runway')) {
+    if (lower.includes('midjourney') || lower.includes('runway') || lower.includes('ai')) {
       return <Sparkles size={currentIconSize} />;
     }
-    if (key === 'video' || lower.includes('youtube') || lower.includes('twitch')) {
+    if (lower.includes('youtube') || lower.includes('twitch')) {
       return <Video size={currentIconSize} />;
     }
-    if (key === 'gamepad2' || lower.includes('playstation') || lower.includes('xbox') || lower.includes('nintendo') || lower.includes('steam')) {
+    if (lower.includes('playstation') || lower.includes('xbox') || lower.includes('nintendo') || lower.includes('steam')) {
       return <Gamepad2 size={currentIconSize} />;
     }
-    if (key === 'dumbbell' || lower.includes('gym') || lower.includes('fitness') || lower.includes('strava') || lower.includes('whoop')) {
+    if (lower.includes('gym') || lower.includes('fitness') || lower.includes('strava') || lower.includes('whoop')) {
       return <Dumbbell size={currentIconSize} />;
     }
-    if (key === 'wifi' || lower.includes('internet') || lower.includes('fiber') || lower.includes('verizon') || lower.includes('at&t')) {
+    if (lower.includes('internet') || lower.includes('fiber') || lower.includes('wifi') || lower.includes('broadband')) {
       return <Wifi size={currentIconSize} />;
     }
-    if (key === 'bookopen' || lower.includes('times') || lower.includes('journal') || lower.includes('medium') || lower.includes('kindle')) {
+    if (lower.includes('times') || lower.includes('journal') || lower.includes('medium') || lower.includes('news')) {
       return <BookOpen size={currentIconSize} />;
     }
 
-    // Category fallbacks
+    // 4. Category defaults
     switch (category) {
       case 'Streaming':
         return <Film size={currentIconSize} />;
@@ -133,8 +233,9 @@ export const ServiceIcon: React.FC<ServiceIconProps> = ({
 
   return (
     <div
-      className={`rounded-xl flex items-center justify-center font-bold text-white shrink-0 shadow-sm transition-transform ${sizeClasses[size]} ${className}`}
+      className={`rounded-xl flex items-center justify-center font-bold text-white shrink-0 shadow-xs transition-transform ${sizeClasses[size]} ${className}`}
       style={{ backgroundColor: color }}
+      title={iconName || name}
     >
       {renderIcon()}
     </div>

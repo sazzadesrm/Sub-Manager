@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useSubscriptions } from '../context/SubscriptionContext';
 import { CURRENCIES } from '../data/subscriptionsData';
 import {
@@ -13,8 +13,11 @@ import {
   Moon,
   Sun,
   Bell,
+  BellRing,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Globe,
+  Radio
 } from 'lucide-react';
 
 export const SettingsView: React.FC = () => {
@@ -30,10 +33,19 @@ export const SettingsView: React.FC = () => {
     importSubscriptions,
     resetToSampleData,
     subscriptions,
+    exchangeRates,
+    ratesLastUpdated,
+    isRatesLoading,
+    refreshExchangeRates,
+    notificationPermission,
+    requestNotifications,
+    sendTestNotification,
+    isNotificationSupported,
   } = useSubscriptions();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importStatus, setImportStatus] = React.useState<string | null>(null);
+  const [testSent, setTestSent] = useState(false);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -57,6 +69,14 @@ export const SettingsView: React.FC = () => {
     reader.readAsText(file);
   };
 
+  const handleTestAlert = () => {
+    const success = sendTestNotification();
+    if (success) {
+      setTestSent(true);
+      setTimeout(() => setTestSent(false), 3000);
+    }
+  };
+
   return (
     <div id="settings-container" className="space-y-6 max-w-4xl">
       {/* Header */}
@@ -65,7 +85,7 @@ export const SettingsView: React.FC = () => {
           Preferences & Data Management
         </h2>
         <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-          Customize currency, export financial statements for budgeting, and manage backup data.
+          Customize currency, real-time exchange rate feeds, browser push renewal alerts, and backup data.
         </p>
       </div>
 
@@ -80,7 +100,7 @@ export const SettingsView: React.FC = () => {
 
           <div>
             <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5">
-              Default Currency
+              Default Primary Currency
             </label>
             <select
               value={currency}
@@ -147,6 +167,110 @@ export const SettingsView: React.FC = () => {
               >
                 Android
               </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 24-Hour Browser Push Notifications System */}
+        <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200/80 dark:border-neutral-800 p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-base text-neutral-900 dark:text-white flex items-center gap-2">
+              <BellRing size={18} className="text-amber-500" />
+              24-Hour Push Alerts
+            </h3>
+            <span
+              className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                notificationPermission === 'granted'
+                  ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
+                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400'
+              }`}
+            >
+              {notificationPermission === 'granted' ? 'Active' : notificationPermission === 'denied' ? 'Blocked' : 'Action Required'}
+            </span>
+          </div>
+
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            Automatically sends a browser notification exactly 24 hours prior to the next renewal date for all active, trial, or paused subscriptions.
+          </p>
+
+          <div className="p-3.5 rounded-2xl bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200/60 dark:border-neutral-700/60 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs font-bold text-neutral-900 dark:text-white">
+                  Browser Permission
+                </div>
+                <div className="text-[11px] text-neutral-500">
+                  Status: {notificationPermission}
+                </div>
+              </div>
+
+              {notificationPermission !== 'granted' ? (
+                <button
+                  onClick={() => requestNotifications()}
+                  className="px-3 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xs transition-colors"
+                >
+                  Enable Push Alerts
+                </button>
+              ) : (
+                <div className="flex items-center gap-1 text-emerald-600 text-xs font-semibold">
+                  <CheckCircle2 size={14} /> Enabled
+                </div>
+              )}
+            </div>
+
+            {notificationPermission === 'granted' && (
+              <div className="pt-2 border-t border-neutral-200/60 dark:border-neutral-700 flex items-center justify-between">
+                <span className="text-[11px] text-neutral-500">
+                  Test notification delivery:
+                </span>
+                <button
+                  onClick={handleTestAlert}
+                  className="px-3 py-1 bg-white dark:bg-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-200 border border-neutral-200 dark:border-neutral-600 rounded-lg text-xs font-medium transition-colors"
+                >
+                  {testSent ? '✓ Notification Dispatched' : 'Send Test Alert'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Real-time Exchange Rates Table */}
+        <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200/80 dark:border-neutral-800 p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-base text-neutral-900 dark:text-white flex items-center gap-2">
+              <Globe size={18} className="text-blue-500" />
+              Live Exchange Rate Service
+            </h3>
+            <button
+              onClick={() => refreshExchangeRates()}
+              disabled={isRatesLoading}
+              className="p-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors text-xs flex items-center gap-1 text-neutral-600 dark:text-neutral-400"
+            >
+              <RefreshCw size={12} className={isRatesLoading ? 'animate-spin text-blue-600' : ''} />
+              <span>Refresh</span>
+            </button>
+          </div>
+
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            Real-time conversion feeds against Bangladeshi Taka (BDT) updated at {ratesLastUpdated}.
+          </p>
+
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="p-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-200/60 dark:border-neutral-700/60 flex justify-between">
+              <span className="font-semibold text-neutral-700 dark:text-neutral-300">1 USD</span>
+              <span className="font-bold text-neutral-900 dark:text-white">{Math.round(1 / (exchangeRates['USD'] || 0.0083))} ৳ BDT</span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-200/60 dark:border-neutral-700/60 flex justify-between">
+              <span className="font-semibold text-neutral-700 dark:text-neutral-300">1 EUR</span>
+              <span className="font-bold text-neutral-900 dark:text-white">{Math.round(1 / (exchangeRates['EUR'] || 0.0077))} ৳ BDT</span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-200/60 dark:border-neutral-700/60 flex justify-between">
+              <span className="font-semibold text-neutral-700 dark:text-neutral-300">1 GBP</span>
+              <span className="font-bold text-neutral-900 dark:text-white">{Math.round(1 / (exchangeRates['GBP'] || 0.0066))} ৳ BDT</span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-200/60 dark:border-neutral-700/60 flex justify-between">
+              <span className="font-semibold text-neutral-700 dark:text-neutral-300">100 ৳ BDT</span>
+              <span className="font-bold text-neutral-900 dark:text-white">{((exchangeRates['INR'] || 0.72) * 100).toFixed(0)} ₹ INR</span>
             </div>
           </div>
         </div>
@@ -231,7 +355,7 @@ export const SettingsView: React.FC = () => {
             Reset to Sample Dataset
           </h4>
           <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-            Restores 8 popular sample subscriptions (Netflix, ChatGPT, Spotify, Adobe, Figma, etc.) with upcoming alerts.
+            Restores popular sample subscriptions (Netflix, ChatGPT, Spotify, Chorki, Google One, etc.) with custom icons & upcoming renewal alerts.
           </p>
         </div>
 

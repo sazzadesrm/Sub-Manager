@@ -1,15 +1,34 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSubscriptions } from '../context/SubscriptionContext';
 import {
   Subscription,
   SubscriptionCategory,
   BillingCycle,
   SubscriptionStatus,
-  PresetSubscription
+  PresetSubscription,
+  UsageFrequency
 } from '../types';
-import { CATEGORIES, CATEGORY_COLORS, POPULAR_PRESETS, CURRENCIES, getRelativeDate } from '../data/subscriptionsData';
+import { CATEGORIES, CATEGORY_COLORS, POPULAR_PRESETS, CURRENCIES, getRelativeDate, COMMON_TAGS } from '../data/subscriptionsData';
+import { LUCIDE_ICON_OPTIONS, CATEGORY_DEFAULT_ICONS, IconOption } from '../data/iconLibrary';
 import { ServiceIcon } from './ServiceIcon';
-import { X, Sparkles, Plus, Check, Calendar, DollarSign, Tag, Clock, Globe, CreditCard } from 'lucide-react';
+import { formatCurrency } from '../utils/calculations';
+import {
+  X,
+  Sparkles,
+  Plus,
+  Check,
+  Calendar,
+  DollarSign,
+  Tag,
+  Clock,
+  Globe,
+  CreditCard,
+  Search,
+  CheckCircle2,
+  ChevronDown,
+  Activity,
+  Hash
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export const SubscriptionModal: React.FC = () => {
@@ -28,11 +47,11 @@ export const SubscriptionModal: React.FC = () => {
   // Form State
   const [name, setName] = useState('');
   const [category, setCategory] = useState<SubscriptionCategory>('Streaming');
-  const [cost, setCost] = useState<string>('9.99');
+  const [cost, setCost] = useState<string>('500');
   const [subCurrency, setSubCurrency] = useState(currency);
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly');
   const [nextRenewalDate, setNextRenewalDate] = useState(getRelativeDate(30));
-  const [paymentMethod, setPaymentMethod] = useState('Visa •••• 4242');
+  const [paymentMethod, setPaymentMethod] = useState('bKash / Card');
   const [status, setStatus] = useState<SubscriptionStatus>('active');
   const [isTrial, setIsTrial] = useState(false);
   const [alertDaysBefore, setAlertDaysBefore] = useState<number>(3);
@@ -40,7 +59,15 @@ export const SubscriptionModal: React.FC = () => {
   const [notes, setNotes] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [color, setColor] = useState('#6366F1');
-  const [iconName, setIconName] = useState('CreditCard');
+  const [iconName, setIconName] = useState('Tv');
+  const [tags, setTags] = useState<string[]>([]);
+  const [newTagInput, setNewTagInput] = useState('');
+  const [usageFrequency, setUsageFrequency] = useState<UsageFrequency>('daily');
+
+  // Icon Picker Filter State
+  const [iconSearch, setIconSearch] = useState('');
+  const [selectedIconCategory, setSelectedIconCategory] = useState<string>('All');
+  const [showFullIconGrid, setShowFullIconGrid] = useState(false);
 
   // Reset or populate when opened
   useEffect(() => {
@@ -59,29 +86,60 @@ export const SubscriptionModal: React.FC = () => {
       setNotes(editingSubscription.notes || '');
       setWebsiteUrl(editingSubscription.websiteUrl || '');
       setColor(editingSubscription.color || '#6366F1');
-      setIconName(editingSubscription.iconName || 'CreditCard');
+      setIconName(editingSubscription.iconName || CATEGORY_DEFAULT_ICONS[editingSubscription.category] || 'CreditCard');
+      setTags(editingSubscription.tags || []);
+      setUsageFrequency(editingSubscription.usageFrequency || 'daily');
       setActiveTab('custom');
     } else {
       setName('');
       setCategory('Streaming');
-      setCost('9.99');
+      setCost('500');
       setSubCurrency(currency);
       setBillingCycle('monthly');
       setNextRenewalDate(getRelativeDate(30));
-      setPaymentMethod('Visa •••• 4242');
+      setPaymentMethod('bKash / Card');
       setStatus('active');
       setIsTrial(false);
       setAlertDaysBefore(3);
       setAutoRenew(true);
       setNotes('');
       setWebsiteUrl('');
-      setColor(CATEGORY_COLORS['Streaming'] || '#6366F1');
-      setIconName('Tv');
+      setColor(CATEGORY_COLORS['Streaming'] || '#E50914');
+      setIconName(CATEGORY_DEFAULT_ICONS['Streaming'] || 'Tv');
+      setTags(['Personal']);
+      setUsageFrequency('daily');
       setActiveTab('presets');
     }
+    setNewTagInput('');
+    setIconSearch('');
+    setSelectedIconCategory('All');
+    setShowFullIconGrid(false);
   }, [editingSubscription, isModalOpen, currency]);
 
+  // Filtered icons for the picker
+  const filteredIcons = useMemo(() => {
+    return LUCIDE_ICON_OPTIONS.filter(icon => {
+      const matchCat =
+        selectedIconCategory === 'All' ||
+        icon.category === selectedIconCategory ||
+        (selectedIconCategory === 'Selected Category' && icon.category === category);
+
+      if (!matchCat) return false;
+
+      if (!iconSearch.trim()) return true;
+
+      const q = iconSearch.toLowerCase();
+      return (
+        icon.name.toLowerCase().includes(q) ||
+        icon.id.toLowerCase().includes(q) ||
+        icon.keywords.some(k => k.toLowerCase().includes(q))
+      );
+    });
+  }, [selectedIconCategory, category, iconSearch]);
+
   if (!isModalOpen) return null;
+
+  const currentCurrencySymbol = CURRENCIES.find(c => c.code === subCurrency)?.symbol || '৳';
 
   const handleApplyPreset = (preset: PresetSubscription) => {
     setName(preset.name);
@@ -91,7 +149,30 @@ export const SubscriptionModal: React.FC = () => {
     setColor(preset.color);
     setIconName(preset.iconName);
     setWebsiteUrl(preset.websiteUrl);
+    setTags(preset.tags || ['Personal']);
     setActiveTab('custom');
+  };
+
+  const handleCategoryChange = (newCategory: SubscriptionCategory) => {
+    setCategory(newCategory);
+    if (CATEGORY_COLORS[newCategory]) {
+      setColor(CATEGORY_COLORS[newCategory]);
+    }
+    if (CATEGORY_DEFAULT_ICONS[newCategory]) {
+      setIconName(CATEGORY_DEFAULT_ICONS[newCategory]);
+    }
+  };
+
+  const handleAddTag = (tagToAdd: string) => {
+    const cleanTag = tagToAdd.trim().replace(/^#/, '');
+    if (cleanTag && !tags.includes(cleanTag)) {
+      setTags(prev => [...prev, cleanTag]);
+      setNewTagInput('');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setTags(prev => prev.filter(t => t !== tagToRemove));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -114,6 +195,8 @@ export const SubscriptionModal: React.FC = () => {
       websiteUrl: websiteUrl.trim() || undefined,
       color,
       iconName,
+      tags: tags.length > 0 ? tags : undefined,
+      usageFrequency,
     };
 
     if (editingSubscription) {
@@ -128,7 +211,8 @@ export const SubscriptionModal: React.FC = () => {
 
   const colorPalette = [
     '#E50914', '#1DB954', '#10A37F', '#6366F1', '#A259FF', '#0EA5E9',
-    '#F59E0B', '#10B981', '#EC4899', '#FF9900', '#24292E', '#4285F4'
+    '#F59E0B', '#10B981', '#EC4899', '#FF9900', '#24292E', '#4285F4',
+    '#059669', '#0284C7', '#7C3AED', '#DB2777'
   ];
 
   return (
@@ -139,23 +223,23 @@ export const SubscriptionModal: React.FC = () => {
         exit={{ opacity: 0, scale: 0.95, y: 10 }}
         transition={{ duration: 0.15 }}
         id="subscription-modal"
-        className="relative w-full max-w-xl bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-2xl overflow-hidden my-8"
+        className="relative w-full max-w-2xl bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-2xl overflow-hidden my-8"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-neutral-100 dark:border-neutral-800">
           <div className="flex items-center gap-3">
             <div
-              className="w-10 h-10 rounded-2xl flex items-center justify-center text-white"
+              className="w-11 h-11 rounded-2xl flex items-center justify-center text-white shadow-xs transition-all ring-2 ring-neutral-200 dark:ring-neutral-700"
               style={{ backgroundColor: color }}
             >
-              <ServiceIcon name={name || 'Service'} iconName={iconName} category={category} color={color} size="sm" />
+              <ServiceIcon name={name || 'Service'} iconName={iconName} category={category} color={color} size="md" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
                 {editingSubscription ? 'Edit Subscription' : 'Add Subscription'}
               </h2>
               <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                {editingSubscription ? 'Update billing and renewal alert preferences' : 'Track a new recurring service or trial'}
+                {editingSubscription ? 'Update billing, custom tags, and renewal preferences' : 'Track a recurring service with tags, custom icon & usage frequency'}
               </p>
             </div>
           </div>
@@ -194,14 +278,14 @@ export const SubscriptionModal: React.FC = () => {
               }`}
             >
               <Plus size={14} />
-              Custom Subscription
+              Custom Subscription & Details
             </button>
           </div>
         )}
 
         {/* Tab 1: Popular Preset Grid */}
         {activeTab === 'presets' && !editingSubscription ? (
-          <div className="p-5 max-h-[480px] overflow-y-auto">
+          <div className="p-5 max-h-[500px] overflow-y-auto">
             <div className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 mb-3 uppercase tracking-wider">
               Quick 1-Click Templates
             </div>
@@ -226,7 +310,7 @@ export const SubscriptionModal: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-neutral-500 dark:text-neutral-400">
-                    <span>${preset.defaultCost.toFixed(2)}/{preset.billingCycle === 'yearly' ? 'yr' : 'mo'}</span>
+                    <span>{formatCurrency(preset.defaultCost, subCurrency)}/{preset.billingCycle === 'yearly' ? 'yr' : 'mo'}</span>
                     <span className="text-blue-600 dark:text-blue-400 font-semibold group-hover:underline">Use</span>
                   </div>
                 </button>
@@ -239,46 +323,252 @@ export const SubscriptionModal: React.FC = () => {
                 onClick={() => setActiveTab('custom')}
                 className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
               >
-                Or enter custom subscription details &rarr;
+                Or enter custom subscription & icon details &rarr;
               </button>
             </div>
           </div>
         ) : (
           /* Tab 2: Custom Form */
-          <form onSubmit={handleSubmit} className="p-5 space-y-4 max-h-[500px] overflow-y-auto">
-            {/* Service Name */}
-            <div>
-              <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1">
-                Service / Subscription Name *
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. Netflix, Figma, Spotify, AWS"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
-              />
+          <form onSubmit={handleSubmit} className="p-5 space-y-4 max-h-[540px] overflow-y-auto">
+            {/* Service Name & Category */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1">
+                  Service / Subscription Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Netflix, Figma, Spotify, AWS"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1">
+                  Category *
+                </label>
+                <select
+                  value={category}
+                  onChange={e => handleCategoryChange(e.target.value as SubscriptionCategory)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                >
+                  {CATEGORIES.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* CUSTOM LUCIDE ICON SELECTOR SECTION */}
+            <div className="p-3.5 rounded-2xl bg-neutral-50/80 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-bold text-neutral-900 dark:text-white flex items-center gap-1.5">
+                    <Tag size={13} className="text-blue-600 dark:text-blue-400" />
+                    Custom Lucide Icon Selection
+                  </div>
+                  <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                    Selected icon: <span className="font-semibold text-blue-600 dark:text-blue-400">{iconName}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center text-white shrink-0 shadow-xs"
+                    style={{ backgroundColor: color }}
+                  >
+                    <ServiceIcon name={name} iconName={iconName} category={category} color={color} size="sm" />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowFullIconGrid(!showFullIconGrid)}
+                    className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/40"
+                  >
+                    {showFullIconGrid ? 'Hide Library' : 'Browse All Icons'}
+                    <ChevronDown size={13} className={`transition-transform ${showFullIconGrid ? 'rotate-180' : ''}`} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Icon Search & Category Filter */}
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-2.5 text-neutral-400" />
+                  <input
+                    type="text"
+                    placeholder="Search Lucide icons (e.g., tv, music, code, bot, cloud, card)..."
+                    value={iconSearch}
+                    onChange={e => {
+                      setIconSearch(e.target.value);
+                      if (!showFullIconGrid) setShowFullIconGrid(true);
+                    }}
+                    className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
+
+                {/* Quick Icon Category Filter Chips */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px] no-scrollbar">
+                  {['All', 'Selected Category', 'Streaming', 'Software', 'Productivity', 'Cloud & Hosting', 'Gaming', 'Health & Fitness', 'Utilities', 'Shopping & Delivery', 'Other'].map(cat => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => {
+                        setSelectedIconCategory(cat);
+                        if (!showFullIconGrid) setShowFullIconGrid(true);
+                      }}
+                      className={`px-2.5 py-1 rounded-lg shrink-0 transition-colors ${
+                        selectedIconCategory === cat
+                          ? 'bg-blue-600 text-white font-semibold'
+                          : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-100'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Icon Selection Grid */}
+              <div
+                className={`grid grid-cols-4 sm:grid-cols-6 gap-2 transition-all ${
+                  showFullIconGrid ? 'max-h-48 overflow-y-auto pr-1' : 'max-h-24 overflow-hidden'
+                }`}
+              >
+                {filteredIcons.map(iconOpt => {
+                  const isSelected = iconName.toLowerCase() === iconOpt.id.toLowerCase();
+                  return (
+                    <button
+                      key={iconOpt.id}
+                      type="button"
+                      onClick={() => setIconName(iconOpt.id)}
+                      className={`p-2 rounded-xl flex flex-col items-center justify-center gap-1 text-center transition-all border ${
+                        isSelected
+                          ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-500 text-blue-600 dark:text-blue-400 font-bold shadow-xs'
+                          : 'bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700/80 text-neutral-700 dark:text-neutral-300 hover:border-blue-300 dark:hover:border-blue-700'
+                      }`}
+                    >
+                      <div
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-white"
+                        style={{ backgroundColor: isSelected ? color : '#64748B' }}
+                      >
+                        <ServiceIcon name="" iconName={iconOpt.id} size="sm" color={isSelected ? color : '#64748B'} />
+                      </div>
+                      <span className="text-[10px] truncate max-w-full font-medium">{iconOpt.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* CUSTOM TAGS SECTION */}
+            <div className="p-3.5 rounded-2xl bg-neutral-50/80 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-800 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-neutral-900 dark:text-white flex items-center gap-1.5">
+                  <Hash size={13} className="text-blue-600 dark:text-blue-400" />
+                  Custom Tags & Labels
+                </label>
+                <span className="text-[11px] text-neutral-400">Filter easily in dashboard</span>
+              </div>
+
+              {/* Active Tags Chips */}
+              <div className="flex items-center gap-1.5 flex-wrap min-h-[28px]">
+                {tags.length === 0 ? (
+                  <span className="text-[11px] text-neutral-400 italic">No tags assigned yet</span>
+                ) : (
+                  tags.map(t => (
+                    <span
+                      key={t}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-100 dark:bg-blue-950/70 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                    >
+                      #{t}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTag(t)}
+                        className="hover:text-rose-600 dark:hover:text-rose-400"
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  ))
+                )}
+              </div>
+
+              {/* Tag Input & Quick Suggestions */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Type new tag & press Enter (e.g. Work, Personal, Shared)..."
+                  value={newTagInput}
+                  onChange={e => setNewTagInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddTag(newTagInput);
+                    }
+                  }}
+                  className="flex-1 px-3 py-1.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleAddTag(newTagInput)}
+                  className="px-3 py-1.5 bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 text-xs font-semibold rounded-xl hover:opacity-90 transition-opacity"
+                >
+                  + Add
+                </button>
+              </div>
+
+              {/* Quick Suggestion Pills */}
+              <div className="flex items-center gap-1 flex-wrap text-[11px]">
+                <span className="text-neutral-400 mr-1">Suggestions:</span>
+                {COMMON_TAGS.map(tag => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => handleAddTag(tag)}
+                    className="px-2 py-0.5 rounded-md bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:border-blue-400 text-[10px] font-medium"
+                  >
+                    +# {tag}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Price, Currency, Billing Cycle */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1">
-                  Cost *
+                  Cost ({subCurrency}) *
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-xs text-neutral-400 font-bold">$</span>
+                  <span className="absolute left-3 top-2.5 text-xs text-neutral-500 dark:text-neutral-400 font-bold">{currentCurrencySymbol}</span>
                   <input
                     type="number"
-                    step="0.01"
+                    step="any"
                     min="0"
                     required
                     value={cost}
                     onChange={e => setCost(e.target.value)}
-                    className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                    className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1">
+                  Currency
+                </label>
+                <select
+                  value={subCurrency}
+                  onChange={e => setSubCurrency(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                >
+                  {CURRENCIES.map(c => (
+                    <option key={c.code} value={c.code}>{c.label}</option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -294,27 +584,6 @@ export const SubscriptionModal: React.FC = () => {
                   <option value="monthly">Monthly</option>
                   <option value="quarterly">Quarterly</option>
                   <option value="yearly">Yearly</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1">
-                  Category
-                </label>
-                <select
-                  value={category}
-                  onChange={e => {
-                    const cat = e.target.value as SubscriptionCategory;
-                    setCategory(cat);
-                    if (CATEGORY_COLORS[cat]) {
-                      setColor(CATEGORY_COLORS[cat]);
-                    }
-                  }}
-                  className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                >
-                  {CATEGORIES.map(c => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
                 </select>
               </div>
             </div>
@@ -336,14 +605,14 @@ export const SubscriptionModal: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1">
-                  Renewal Alert Timing
+                  Renewal Alert Timing (Push Alert)
                 </label>
                 <select
                   value={alertDaysBefore}
                   onChange={e => setAlertDaysBefore(Number(e.target.value))}
                   className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 >
-                  <option value={1}>1 day before (Urgent)</option>
+                  <option value={1}>1 day before / 24h (Urgent)</option>
                   <option value={2}>2 days before</option>
                   <option value={3}>3 days before (Recommended)</option>
                   <option value={5}>5 days before</option>
@@ -353,30 +622,35 @@ export const SubscriptionModal: React.FC = () => {
               </div>
             </div>
 
-            {/* Payment Method & Website */}
+            {/* Usage Frequency / Activity Level (For Smart Audit) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1 flex items-center gap-1.5">
+                  <Activity size={13} className="text-emerald-500" />
+                  Usage & Activity Frequency
+                </label>
+                <select
+                  value={usageFrequency}
+                  onChange={e => setUsageFrequency(e.target.value as UsageFrequency)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                >
+                  <option value="daily">Daily Active (High Priority)</option>
+                  <option value="weekly">Weekly Regular</option>
+                  <option value="monthly">Monthly Occasional</option>
+                  <option value="rarely">Rarely / Infrequent (Smart Audit Target)</option>
+                  <option value="unused">Unused / Dormant (Recommend Cancel)</option>
+                </select>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1">
                   Payment Method
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Apple Pay, Visa •••• 4242"
+                  placeholder="e.g. bKash, Visa Dual Currency, Apple Pay"
                   value={paymentMethod}
                   onChange={e => setPaymentMethod(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1">
-                  Manage / Cancel URL
-                </label>
-                <input
-                  type="url"
-                  placeholder="https://..."
-                  value={websiteUrl}
-                  onChange={e => setWebsiteUrl(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
@@ -390,7 +664,7 @@ export const SubscriptionModal: React.FC = () => {
                     Free Trial Period
                   </div>
                   <div className="text-[11px] text-neutral-500">
-                    Flags upcoming auto-renewal charges before trial ends
+                    Triggers 24h browser push alert before trial expires and auto-renews
                   </div>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
@@ -447,14 +721,14 @@ export const SubscriptionModal: React.FC = () => {
               </div>
             </div>
 
-            {/* Notes */}
+            {/* Notes & Usage Details for Smart Audit */}
             <div>
               <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1">
-                Notes & Shared Accounts (Optional)
+                Notes & Usage Details (Audited by Smart Savings AI)
               </label>
               <textarea
                 rows={2}
-                placeholder="e.g. Shared with roommates; cancel if not used by November."
+                placeholder="e.g. Rarely used in past 2 months; family plan; cancel if unused."
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800 text-neutral-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20"

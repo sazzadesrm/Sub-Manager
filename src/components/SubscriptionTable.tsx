@@ -13,7 +13,8 @@ import {
   CheckCircle2,
   Calendar,
   Check,
-  ChevronDown
+  ChevronDown,
+  Activity
 } from 'lucide-react';
 
 interface SubscriptionTableProps {
@@ -32,6 +33,7 @@ export const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ subscripti
     deleteSubscription,
     setEditingSubscription,
     setIsModalOpen,
+    setSelectedTag,
   } = useSubscriptions();
 
   const handleSort = (column: 'cost' | 'renewal' | 'name') => {
@@ -92,6 +94,11 @@ export const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ subscripti
             const { text: daysText, isSoon } = formatDaysRemaining(daysUntil);
             const isPaused = sub.status === 'paused';
             const isTrial = sub.status === 'trial' || sub.isTrial;
+            const isLowUsage =
+              sub.usageFrequency === 'rarely' ||
+              sub.usageFrequency === 'unused' ||
+              (sub.notes || '').toLowerCase().includes('rarely') ||
+              (sub.notes || '').toLowerCase().includes('unused');
 
             return (
               <tr
@@ -101,7 +108,7 @@ export const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ subscripti
                   isPaused ? 'opacity-60 bg-neutral-50/30 dark:bg-neutral-900/30' : ''
                 }`}
               >
-                {/* Service Name & Icon */}
+                {/* Service Name & Icon & Tags */}
                 <td className="py-3 px-4">
                   <div className="flex items-center gap-3">
                     <ServiceIcon
@@ -112,7 +119,7 @@ export const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ subscripti
                       size="sm"
                     />
                     <div>
-                      <div className="font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
+                      <div className="font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5 flex-wrap">
                         <span>{sub.name}</span>
                         {sub.websiteUrl && (
                           <a
@@ -125,12 +132,36 @@ export const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ subscripti
                             <ExternalLink size={12} />
                           </a>
                         )}
+                        {isLowUsage && (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-1.5 py-0.5 rounded-md">
+                            <Activity size={10} /> Low Usage
+                          </span>
+                        )}
                       </div>
-                      {sub.paymentMethod && (
-                        <div className="text-xs text-neutral-400 dark:text-neutral-500">
-                          {sub.paymentMethod}
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        {sub.paymentMethod && (
+                          <span className="text-xs text-neutral-400 dark:text-neutral-500">
+                            {sub.paymentMethod}
+                          </span>
+                        )}
+                        {sub.tags && sub.tags.length > 0 && (
+                          <div className="flex items-center gap-1">
+                            {sub.tags.slice(0, 2).map(tag => (
+                              <button
+                                key={tag}
+                                type="button"
+                                onClick={() => setSelectedTag(tag)}
+                                className="text-[10px] px-1.5 py-0.2 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:text-blue-500"
+                              >
+                                #{tag}
+                              </button>
+                            ))}
+                            {sub.tags.length > 2 && (
+                              <span className="text-[10px] text-neutral-400">+{sub.tags.length - 2}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </td>

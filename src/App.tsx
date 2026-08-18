@@ -7,6 +7,10 @@ import { SubscriptionTable } from './components/SubscriptionTable';
 import { VisualAnalytics } from './components/VisualAnalytics';
 import { CalendarView } from './components/CalendarView';
 import { OptimizationAudit } from './components/OptimizationAudit';
+import { BudgetForecast } from './components/BudgetForecast';
+import { AutomatedEmailsHub } from './components/AutomatedEmailsHub';
+import { UserManagementRBAC } from './components/UserManagementRBAC';
+import { HostedCheckoutModal } from './components/HostedCheckoutModal';
 import { SettingsView } from './components/SettingsView';
 import { SubscriptionModal } from './components/SubscriptionModal';
 import { AndroidFrame } from './components/AndroidFrame';
@@ -19,11 +23,13 @@ import {
   CreditCard,
   Calendar,
   PieChart,
+  TrendingUp,
   Sparkles,
+  Mail,
+  Users,
   Settings,
   Plus,
   Search,
-  SlidersHorizontal,
   Table,
   LayoutGrid,
   Monitor,
@@ -33,13 +39,9 @@ import {
   Sun,
   Download,
   ShieldCheck,
-  Bell,
-  ArrowUpDown,
-  Filter,
-  CheckCircle2,
-  ExternalLink
+  ShoppingBag,
+  Filter
 } from 'lucide-react';
-import { motion } from 'motion/react';
 
 function AppContent() {
   const {
@@ -57,6 +59,9 @@ function AppContent() {
     setSelectedCategory,
     selectedStatus,
     setSelectedStatus,
+    selectedTag,
+    setSelectedTag,
+    availableTags,
     sortBy,
     setSortBy,
     sortDirection,
@@ -66,6 +71,9 @@ function AppContent() {
     exportCSV,
     setIsModalOpen,
     setEditingSubscription,
+    isCheckoutOpen,
+    setIsCheckoutOpen,
+    currentUser,
   } = useSubscriptions();
 
   const [displayLayout, setDisplayLayout] = useState<'grid' | 'table'>('table');
@@ -75,14 +83,18 @@ function AppContent() {
     const matchesSearch =
       sub.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       sub.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (sub.notes && sub.notes.toLowerCase().includes(searchQuery.toLowerCase()));
+      (sub.notes && sub.notes.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (sub.tags && sub.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())));
 
     const matchesCategory = selectedCategory === 'All' || sub.category === selectedCategory;
     const matchesStatus =
       selectedStatus === 'All' ||
       (selectedStatus === 'trial' ? sub.isTrial || sub.status === 'trial' : sub.status === selectedStatus);
+    const matchesTag =
+      selectedTag === 'All' ||
+      (sub.tags && sub.tags.includes(selectedTag));
 
-    return matchesSearch && matchesCategory && matchesStatus;
+    return matchesSearch && matchesCategory && matchesStatus && matchesTag;
   });
 
   // Sort
@@ -119,17 +131,33 @@ function AppContent() {
     },
     {
       id: 'analytics',
-      label: 'Analytics & Trends',
+      label: 'Analytics & D3 Treemap',
       icon: <PieChart size={18} />,
+    },
+    {
+      id: 'forecast',
+      label: 'Budget Forecasting',
+      icon: <TrendingUp size={18} />,
     },
     {
       id: 'audit',
       label: 'Smart Savings Audit',
       icon: <Sparkles size={18} />,
+      badge: stats.lowUsageCount > 0 ? stats.lowUsageCount : undefined,
+    },
+    {
+      id: 'emails',
+      label: 'Automated Billing Emails',
+      icon: <Mail size={18} />,
+    },
+    {
+      id: 'team',
+      label: 'Team & RBAC',
+      icon: <Users size={18} />,
     },
     {
       id: 'settings',
-      label: 'Settings & Data',
+      label: 'Settings & Live Rates',
       icon: <Settings size={18} />,
     },
   ];
@@ -151,7 +179,7 @@ function AppContent() {
                     Active Recurring Services
                   </h3>
                   <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                    Showing next upcoming renewal charges
+                    Showing upcoming renewals with real-time conversion & tag tracking
                   </p>
                 </div>
 
@@ -178,8 +206,8 @@ function AppContent() {
               <div className="lg:col-span-2">
                 <VisualAnalytics />
               </div>
-              <div>
-                <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200/80 dark:border-neutral-800 p-5 shadow-xs h-full flex flex-col justify-between">
+              <div className="space-y-6">
+                <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200/80 dark:border-neutral-800 p-5 shadow-xs flex flex-col justify-between">
                   <div>
                     <h3 className="font-bold text-neutral-900 dark:text-white text-base flex items-center gap-2 mb-2">
                       <ShieldCheck size={18} className="text-emerald-500" />
@@ -205,13 +233,22 @@ function AppContent() {
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => setActiveTab('audit')}
-                    className="mt-4 w-full py-2.5 px-3 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
-                  >
-                    <Sparkles size={14} />
-                    Run Smart Cost Audit
-                  </button>
+                  <div className="mt-4 pt-3 border-t border-neutral-100 dark:border-neutral-800 flex gap-2">
+                    <button
+                      onClick={() => setActiveTab('audit')}
+                      className="flex-1 py-2.5 px-3 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <Sparkles size={14} />
+                      Cost Audit
+                    </button>
+                    <button
+                      onClick={() => setIsCheckoutOpen(true)}
+                      className="py-2.5 px-3 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <ShoppingBag size={14} />
+                      Upgrade
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -229,7 +266,7 @@ function AppContent() {
                     All Subscriptions ({filteredSubscriptions.length})
                   </h2>
                   <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                    Filter by category, search notes, or inline edit service status
+                    Filter by custom tags, category, search notes, or inline edit service status
                   </p>
                 </div>
 
@@ -280,11 +317,11 @@ function AppContent() {
               {/* Filters Row */}
               <div className="flex flex-col sm:flex-row items-center gap-3 pt-2 border-t border-neutral-100 dark:border-neutral-800">
                 {/* Search input */}
-                <div className="relative w-full sm:w-64">
+                <div className="relative w-full sm:w-60">
                   <Search size={14} className="absolute left-3 top-3 text-neutral-400" />
                   <input
                     type="text"
-                    placeholder="Search name, category..."
+                    placeholder="Search name, notes, #tag..."
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     className="w-full pl-8 pr-3 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20"
@@ -319,6 +356,18 @@ function AppContent() {
                     <option key={cat} value={cat}>{cat}</option>
                   ))}
                 </select>
+
+                {/* Tag Filter */}
+                <select
+                  value={selectedTag}
+                  onChange={e => setSelectedTag(e.target.value)}
+                  className="w-full sm:w-auto px-3 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 text-xs focus:outline-none"
+                >
+                  <option value="All">All Tags</option>
+                  {availableTags.map(tag => (
+                    <option key={tag} value={tag}>#{tag}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -327,7 +376,7 @@ function AppContent() {
               <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200 dark:border-neutral-800 p-12 text-center text-neutral-400">
                 <Search size={32} className="mx-auto mb-2 opacity-40" />
                 <p className="font-semibold text-neutral-700 dark:text-neutral-300 text-sm">No subscriptions match your filter</p>
-                <p className="text-xs text-neutral-500 mt-1">Try clearing your search query or category filters.</p>
+                <p className="text-xs text-neutral-500 mt-1">Try clearing your search query, tags, or category filters.</p>
               </div>
             ) : displayLayout === 'table' ? (
               <SubscriptionTable subscriptions={sortedSubscriptions} />
@@ -347,8 +396,17 @@ function AppContent() {
       case 'analytics':
         return <VisualAnalytics />;
 
+      case 'forecast':
+        return <BudgetForecast />;
+
       case 'audit':
         return <OptimizationAudit />;
+
+      case 'emails':
+        return <AutomatedEmailsHub />;
+
+      case 'team':
+        return <UserManagementRBAC />;
 
       case 'settings':
         return <SettingsView />;
@@ -369,7 +427,7 @@ function AppContent() {
           </div>
           <div>
             <div className="font-extrabold text-neutral-900 dark:text-white text-base tracking-tight leading-tight flex items-center gap-2">
-              <span>SubManager</span>
+              <span>SubManager Pro</span>
               <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
                 Web & Android
               </span>
@@ -377,8 +435,17 @@ function AppContent() {
           </div>
         </div>
 
-        {/* Global Controls: View Mode Switcher, Dark Mode, Quick Add */}
+        {/* Global Controls: View Mode Switcher, Checkout, Dark Mode, Quick Add */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Hosted Checkout button */}
+          <button
+            onClick={() => setIsCheckoutOpen(true)}
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs font-bold transition-all hover:bg-emerald-100"
+          >
+            <ShoppingBag size={13} />
+            <span>Hosted Checkout</span>
+          </button>
+
           {/* View Mode Switcher (Web / Android / Responsive) */}
           <div className="flex items-center bg-neutral-100 dark:bg-neutral-800 p-1 rounded-xl border border-neutral-200/60 dark:border-neutral-700/60">
             <button
@@ -437,7 +504,7 @@ function AppContent() {
             className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-sm shadow-blue-500/20 transition-all active:scale-95"
           >
             <Plus size={15} strokeWidth={2.5} />
-            <span>Add Subscription</span>
+            <span>Add Service</span>
           </button>
         </div>
       </header>
@@ -518,13 +585,34 @@ function AppContent() {
 
       {/* Mobile Sticky Bottom Nav when in responsive mobile viewport */}
       {viewMode !== 'android' && (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40">
-          <AndroidBottomNav />
-        </div>
+        <>
+          {/* Mobile Material Floating Action Button (FAB) */}
+          <button
+            id="mobile-fab-add"
+            onClick={() => {
+              setEditingSubscription(null);
+              setIsModalOpen(true);
+            }}
+            className="lg:hidden fixed bottom-20 right-5 z-40 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl shadow-xl shadow-blue-600/40 flex items-center justify-center transition-all active:scale-95 focus:outline-none focus:ring-4 focus:ring-blue-500/30"
+            aria-label="Add Subscription"
+          >
+            <Plus size={24} strokeWidth={2.5} />
+          </button>
+
+          <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40">
+            <AndroidBottomNav />
+          </div>
+        </>
       )}
 
       {/* Subscription Add / Edit Modal */}
       <SubscriptionModal />
+
+      {/* Hosted Checkout Modal */}
+      <HostedCheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+      />
     </div>
   );
 }

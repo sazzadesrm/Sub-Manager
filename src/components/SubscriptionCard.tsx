@@ -14,7 +14,9 @@ import {
   Trash2,
   Edit2,
   AlertCircle,
-  Repeat
+  Repeat,
+  Tag,
+  Activity
 } from 'lucide-react';
 
 interface SubscriptionCardProps {
@@ -33,6 +35,7 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
     deleteSubscription,
     setEditingSubscription,
     setIsModalOpen,
+    setSelectedTag,
   } = useSubscriptions();
 
   const [menuOpen, setMenuOpen] = React.useState(false);
@@ -46,6 +49,12 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
     setIsModalOpen(true);
     setMenuOpen(false);
   };
+
+  const isLowUsage =
+    subscription.usageFrequency === 'rarely' ||
+    subscription.usageFrequency === 'unused' ||
+    (subscription.notes || '').toLowerCase().includes('rarely') ||
+    (subscription.notes || '').toLowerCase().includes('unused');
 
   return (
     <div
@@ -87,7 +96,7 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
               )}
             </div>
 
-            <div className="flex items-center gap-2 mt-0.5">
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
               <span className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">
                 {subscription.category}
               </span>
@@ -95,6 +104,11 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
               <span className="text-xs text-neutral-500 dark:text-neutral-400 capitalize">
                 {subscription.billingCycle}
               </span>
+              {isLowUsage && (
+                <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-1.5 py-0.5 rounded-md">
+                  <Activity size={10} /> Low Usage
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -197,8 +211,24 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
         </div>
       </div>
 
+      {/* Tags list if available */}
+      {subscription.tags && subscription.tags.length > 0 && (
+        <div className="mt-3 flex items-center gap-1 flex-wrap">
+          {subscription.tags.map(tag => (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => setSelectedTag(tag)}
+              className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-md bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-blue-50 dark:hover:bg-blue-950/60 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            >
+              #{tag}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Bottom row: Renewal Date & Quick Actions */}
-      <div className="mt-4 pt-3 border-t border-neutral-100 dark:border-neutral-800/80 flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-400">
+      <div className="mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800/80 flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-400">
         <div className="flex items-center gap-1.5 truncate">
           <Calendar size={13} className="shrink-0 text-neutral-400" />
           <span className="truncate">
