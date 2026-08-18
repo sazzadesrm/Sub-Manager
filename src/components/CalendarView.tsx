@@ -49,7 +49,7 @@ export const CalendarView: React.FC = () => {
   // Map subscriptions to date keys "YYYY-MM-DD"
   const subscriptionsByDate: Record<string, Subscription[]> = {};
   subscriptions
-    .filter(s => s.status === 'active' || s.status === 'trial')
+    .filter(s => (s.status === 'active' || s.status === 'trial') && s.billingCycle !== 'lifetime' && s.nextRenewalDate)
     .forEach(sub => {
       const dateKey = sub.nextRenewalDate;
       if (!subscriptionsByDate[dateKey]) {

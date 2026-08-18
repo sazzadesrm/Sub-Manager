@@ -14,7 +14,6 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { ServiceIcon } from './ServiceIcon';
-import { D3CategoryTreemap } from './D3CategoryTreemap';
 import { TrendingUp, PieChart as PieIcon, BarChart3, AlertCircle, ArrowUpRight, CheckCircle2, Layers } from 'lucide-react';
 
 export const VisualAnalytics: React.FC = () => {
@@ -99,8 +98,6 @@ export const VisualAnalytics: React.FC = () => {
         </div>
       </div>
 
-      {/* D3 TREEMAP BREAKDOWN SECTION */}
-      <D3CategoryTreemap />
 
       {/* Grid of secondary charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

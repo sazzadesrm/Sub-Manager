@@ -10,7 +10,6 @@ import { SubscriptionTable } from './components/SubscriptionTable';
 import { SubscriptionCard } from './components/SubscriptionCard';
 import { PaymentView } from './components/PaymentView';
 import { VisualAnalytics } from './components/VisualAnalytics';
-import { CustomerView } from './components/CustomerView';
 import { ReportsView } from './components/ReportsView';
 import { SettingsView } from './components/SettingsView';
 import { CalendarView } from './components/CalendarView';
@@ -19,6 +18,7 @@ import { OptimizationAudit } from './components/OptimizationAudit';
 import { SubscriptionModal } from './components/SubscriptionModal';
 import { AndroidFrame } from './components/AndroidFrame';
 import { AndroidBottomNav } from './components/AndroidBottomNav';
+import { ProfileCustomizationModal } from './components/ProfileCustomizationModal';
 import { CATEGORIES } from './data/subscriptionsData';
 import { SubscriptionCategory, SubscriptionStatus } from './types';
 import {
@@ -109,7 +109,6 @@ function AppContent() {
         return (
           <TruvaDashboard
             onNavigateTab={tab => setActiveTab(tab)}
-            onOpenUpgrade={() => setActiveTab('payment')}
           />
         );
 
@@ -273,9 +272,6 @@ function AppContent() {
           </div>
         );
 
-      case 'customer':
-        return <CustomerView />;
-
       case 'reports':
         return <ReportsView />;
 
@@ -298,7 +294,6 @@ function AppContent() {
         return (
           <TruvaDashboard
             onNavigateTab={tab => setActiveTab(tab)}
-            onOpenUpgrade={() => setActiveTab('payment')}
           />
         );
     }
@@ -328,7 +323,6 @@ function AppContent() {
             ) : (
               <TruvaSidebar
                 sidebarCollapsed={sidebarCollapsed}
-                onOpenUpgrade={() => setActiveTab('payment')}
               />
             )}
           </div>
@@ -349,6 +343,9 @@ function AppContent() {
 
       {/* Subscription Modal for Add / Edit */}
       <SubscriptionModal />
+
+      {/* Profile & Account Customization Modal */}
+      <ProfileCustomizationModal />
     </div>
   );
 }

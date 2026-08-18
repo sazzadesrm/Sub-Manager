@@ -40,7 +40,7 @@ import {
 import { authService, AuthUser } from '../services/authService';
 import confetti from 'canvas-confetti';
 
-export type AppTheme = 'munemind' | 'truva' | 'emerald' | 'ocean';
+export type AppTheme = 'munemind' | 'truva';
 
 interface SubscriptionContextType {
   // Authentication & User State
@@ -48,10 +48,19 @@ interface SubscriptionContextType {
   isAuthenticated: boolean;
   isAuthLoading: boolean;
   signIn: (email: string, pass: string) => Promise<AuthUser>;
-  signUp: (name: string, email: string, pass: string) => Promise<AuthUser>;
+  signUp: (name: string, email: string, pass: string) => Promise<{ user: AuthUser; verificationToken: string; verificationCode: string }>;
+  verifyEmail: (email: string, tokenOrCode: string) => Promise<AuthUser>;
+  signInWithGoogle: (googleProfile: { name: string; email: string; avatar?: string }) => Promise<AuthUser>;
   signOut: () => void;
   forgotPassword: (email: string) => Promise<{ code: string; message: string }>;
   resetPassword: (email: string, code: string, newPass: string) => Promise<boolean>;
+
+  // Profile Customization
+  updateUserProfile: (data: Partial<AuthUser>) => Promise<AuthUser>;
+  changeUserEmail: (newEmail: string) => Promise<AuthUser>;
+  changeUserPassword: (currentPass: string, newPass: string) => Promise<boolean>;
+  isProfileModalOpen: boolean;
+  setIsProfileModalOpen: (open: boolean) => void;
 
   // Subscriptions dataset (Isolated per user)
   subscriptions: Subscription[];
@@ -153,8 +162,9 @@ const GLOBAL_SETTINGS_KEY = 'submanager_global_settings_v3';
 
 export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Auth state
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => authService.getCurrentUser());
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => authService.getCurrentUserSync());
   const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   // Settings State
   const [viewMode, setViewMode] = useState<ViewMode>('responsive');
@@ -187,7 +197,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const getUserLogsStorageKey = (userId: string) => `submanager_user_${userId}_logs_v3`;
 
   const [subscriptions, setSubscriptions] = useState<Subscription[]>(() => {
-    const user = authService.getCurrentUser();
+    const user = authService.getCurrentUserSync();
     if (!user) return [];
     try {
       const userKey = `submanager_user_${user.id}_subs_v3`;
@@ -195,8 +205,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       if (saved) {
         return JSON.parse(saved);
       }
-      // Demo accounts seed initial dataset on first visit
-      if (user.email === 'sazzadmbstu@gmail.com' || user.email === 'john@sublytics.io') {
+      if (user.email === 'sazzadmbstu@gmail.com') {
         localStorage.setItem(userKey, JSON.stringify(INITIAL_SUBSCRIPTIONS));
         return INITIAL_SUBSCRIPTIONS;
       }
@@ -208,7 +217,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   // RBAC & Team state (User scoped)
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>(() => {
-    const user = authService.getCurrentUser();
+    const user = authService.getCurrentUserSync();
     if (!user) return [];
     try {
       const key = `submanager_user_${user.id}_team_v3`;
@@ -223,7 +232,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   // Audit Logs (User scoped)
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => {
-    const user = authService.getCurrentUser();
+    const user = authService.getCurrentUserSync();
     if (!user) return [];
     try {
       const key = `submanager_user_${user.id}_logs_v3`;
@@ -282,12 +291,10 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const savedSubs = localStorage.getItem(subsKey);
       if (savedSubs) {
         setSubscriptions(JSON.parse(savedSubs));
-      } else if (currentUser.email === 'sazzadmbstu@gmail.com' || currentUser.email === 'john@sublytics.io') {
-        // Pre-fill demo data for demo users
+      } else if (currentUser.email === 'sazzadmbstu@gmail.com') {
         localStorage.setItem(subsKey, JSON.stringify(INITIAL_SUBSCRIPTIONS));
         setSubscriptions(INITIAL_SUBSCRIPTIONS);
       } else {
-        // New users ALWAYS start completely empty
         localStorage.setItem(subsKey, JSON.stringify([]));
         setSubscriptions([]);
       }
@@ -357,12 +364,40 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  const signUp = async (nameInput: string, emailInput: string, passInput: string): Promise<AuthUser> => {
+  const signUp = async (
+    nameInput: string,
+    emailInput: string,
+    passInput: string
+  ): Promise<{ user: AuthUser; verificationToken: string; verificationCode: string }> => {
     setIsAuthLoading(true);
     try {
-      const user = await authService.signUp(nameInput, emailInput, passInput);
-      // New user begins in completely empty state
+      const res = await authService.signUp(nameInput, emailInput, passInput);
       setSubscriptions([]);
+      return res;
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
+  const verifyEmail = async (emailInput: string, tokenOrCode: string): Promise<AuthUser> => {
+    setIsAuthLoading(true);
+    try {
+      const user = await authService.verifyEmail(emailInput, tokenOrCode);
+      setCurrentUser(user);
+      return user;
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
+  const signInWithGoogle = async (googleProfile: {
+    name: string;
+    email: string;
+    avatar?: string;
+  }): Promise<AuthUser> => {
+    setIsAuthLoading(true);
+    try {
+      const user = await authService.signInWithGoogle(googleProfile);
       setCurrentUser(user);
       return user;
     } finally {
@@ -384,6 +419,34 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const resetPassword = async (emailInput: string, codeInput: string, newPassInput: string) => {
     return authService.completePasswordReset(emailInput, codeInput, newPassInput);
+  };
+
+  // Profile Customization operations
+  const updateUserProfile = async (data: Partial<AuthUser>): Promise<AuthUser> => {
+    if (!currentUser) throw new Error('You must be signed in.');
+    const updated = await authService.updateProfile(currentUser.id, data);
+    setCurrentUser(updated);
+    addAuditLog('Updated Profile', 'Modified account profile & basic information', 'user');
+    confetti({ particleCount: 35, spread: 60, origin: { y: 0.8 } });
+    return updated;
+  };
+
+  const changeUserEmail = async (newEmail: string): Promise<AuthUser> => {
+    if (!currentUser) throw new Error('You must be signed in.');
+    const updated = await authService.updateEmail(currentUser.id, newEmail);
+    setCurrentUser(updated);
+    addAuditLog('Changed Email Address', `Updated primary account email to ${newEmail}`, 'security');
+    return updated;
+  };
+
+  const changeUserPassword = async (currentPass: string, newPass: string): Promise<boolean> => {
+    if (!currentUser) throw new Error('You must be signed in.');
+    const success = await authService.changePassword(currentUser.id, currentPass, newPass);
+    if (success) {
+      addAuditLog('Changed Password', 'Account password successfully updated', 'security');
+      confetti({ particleCount: 40, spread: 60, origin: { y: 0.8 } });
+    }
+    return success;
   };
 
   // Extract all distinct tags from subscriptions
@@ -674,7 +737,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const monthly = normalizeToMonthly(sub.cost, sub.billingCycle);
       const yearly = normalizeToYearly(sub.cost, sub.billingCycle);
 
-      // Low usage detection
       const notesLower = (sub.notes || '').toLowerCase();
       const isLowUsageByNotes =
         notesLower.includes('rarely') ||
@@ -700,14 +762,12 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           highestCostSub = sub;
         }
 
-        // Category breakdown
         if (!categoryMap[sub.category]) {
           categoryMap[sub.category] = { monthlyCost: 0, count: 0, color: sub.color };
         }
         categoryMap[sub.category].monthlyCost += monthly;
         categoryMap[sub.category].count += 1;
 
-        // Days calculation
         const days = getDaysUntil(sub.nextRenewalDate);
         if (days >= 0 && days <= 7) {
           upcomingNext7DaysCount += 1;
@@ -763,9 +823,16 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         isAuthLoading,
         signIn,
         signUp,
+        verifyEmail,
+        signInWithGoogle,
         signOut,
         forgotPassword,
         resetPassword,
+        updateUserProfile,
+        changeUserEmail,
+        changeUserPassword,
+        isProfileModalOpen,
+        setIsProfileModalOpen,
         subscriptions,
         viewMode,
         setViewMode,

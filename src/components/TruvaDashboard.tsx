@@ -27,10 +27,9 @@ import confetti from 'canvas-confetti';
 
 interface TruvaDashboardProps {
   onNavigateTab: (tab: any) => void;
-  onOpenUpgrade: () => void;
 }
 
-export const TruvaDashboard: React.FC<TruvaDashboardProps> = ({ onNavigateTab, onOpenUpgrade }) => {
+export const TruvaDashboard: React.FC<TruvaDashboardProps> = ({ onNavigateTab }) => {
   const { currency, stats, currentUser, addAuditLog } = useSubscriptions();
   const [timeframe, setTimeframe] = useState<'Yearly' | 'Quarterly' | 'Monthly'>('Yearly');
   const [retryToast, setRetryToast] = useState<string | null>(null);
@@ -409,11 +408,11 @@ export const TruvaDashboard: React.FC<TruvaDashboardProps> = ({ onNavigateTab, o
           </div>
 
           <button
-            onClick={onOpenUpgrade}
-            className="mt-6 w-full py-2.5 bg-neutral-50 dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
+            onClick={() => onNavigateTab('emails')}
+            className="mt-6 w-full py-2.5 bg-neutral-50 dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <Sparkles size={14} className="text-amber-500" />
-            <span>Automate Activity Alerts</span>
+            <span>Manage Renewal & Activity Reminders</span>
           </button>
         </div>
       </div>

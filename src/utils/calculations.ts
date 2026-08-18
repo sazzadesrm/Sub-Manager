@@ -10,6 +10,8 @@ export function normalizeToDaily(cost: number, cycle: BillingCycle): number {
       return cost / 91.25;
     case 'yearly':
       return cost / 365.25;
+    case 'lifetime':
+      return 0; // One-time payment, no recurring daily cost
     default:
       return cost / 30.417;
   }
@@ -25,6 +27,8 @@ export function normalizeToMonthly(cost: number, cycle: BillingCycle): number {
       return cost / 3;
     case 'yearly':
       return cost / 12;
+    case 'lifetime':
+      return 0; // One-time payment, 0 recurring monthly expense
     default:
       return cost;
   }
@@ -40,16 +44,24 @@ export function normalizeToYearly(cost: number, cycle: BillingCycle): number {
       return cost * 4;
     case 'yearly':
       return cost;
+    case 'lifetime':
+      return 0; // One-time payment, 0 recurring yearly expense
     default:
       return cost * 12;
   }
 }
 
-export function getDaysUntil(dateString: string): number {
+export function getDaysUntil(dateString?: string): number {
+  if (!dateString || dateString === 'Unlimited' || dateString === 'lifetime' || dateString.trim() === '') {
+    return Infinity;
+  }
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
   const target = new Date(dateString);
+  if (isNaN(target.getTime())) {
+    return Infinity;
+  }
   target.setHours(0, 0, 0, 0);
 
   const diffTime = target.getTime() - today.getTime();
@@ -57,6 +69,9 @@ export function getDaysUntil(dateString: string): number {
 }
 
 export function formatDaysRemaining(days: number): { text: string; isPast: boolean; isSoon: boolean } {
+  if (!isFinite(days) || days > 10000) {
+    return { text: 'Unlimited', isPast: false, isSoon: false };
+  }
   if (days < 0) {
     return { text: `${Math.abs(days)}d overdue`, isPast: true, isSoon: true };
   }
@@ -76,9 +91,10 @@ export function generateAlerts(subscriptions: Subscription[]): RenewalAlert[] {
   const alerts: RenewalAlert[] = [];
 
   subscriptions
-    .filter(s => s.status === 'active' || s.status === 'trial')
+    .filter(s => (s.status === 'active' || s.status === 'trial') && s.billingCycle !== 'lifetime' && s.nextRenewalDate)
     .forEach(sub => {
       const days = getDaysUntil(sub.nextRenewalDate);
+      if (!isFinite(days)) return;
       const alertWindow = Math.max(sub.alertDaysBefore || 3, 3);
 
       if (days <= alertWindow) {
@@ -95,7 +111,7 @@ export function generateAlerts(subscriptions: Subscription[]): RenewalAlert[] {
           subscriptionName: sub.name,
           cost: sub.cost,
           currency: sub.currency,
-          renewalDate: sub.nextRenewalDate,
+          renewalDate: sub.nextRenewalDate || 'Unlimited',
           daysRemaining: days,
           isTrial: !!sub.isTrial,
           severity,
@@ -138,7 +154,7 @@ export function exportSubscriptionsToCSV(subscriptions: Subscription[]): void {
     normalizeToDaily(sub.cost, sub.billingCycle).toFixed(2),
     normalizeToMonthly(sub.cost, sub.billingCycle).toFixed(2),
     normalizeToYearly(sub.cost, sub.billingCycle).toFixed(2),
-    `"${sub.nextRenewalDate}"`,
+    sub.billingCycle === 'lifetime' ? '"Unlimited"' : `"${sub.nextRenewalDate || ''}"`,
     `"${sub.status}"`,
     sub.isTrial ? 'YES' : 'NO',
     `"${(sub.paymentMethod || '').replace(/"/g, '""')}"`,

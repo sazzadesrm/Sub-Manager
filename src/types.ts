@@ -1,4 +1,4 @@
-export type BillingCycle = 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+export type BillingCycle = 'weekly' | 'monthly' | 'quarterly' | 'yearly' | 'lifetime';
 
 export type SubscriptionStatus = 'active' | 'paused' | 'trial' | 'cancelled';
 
@@ -24,7 +24,8 @@ export interface Subscription {
   cost: number;
   currency: string;
   billingCycle: BillingCycle;
-  nextRenewalDate: string; // ISO format YYYY-MM-DD
+  purchaseDate?: string; // ISO format YYYY-MM-DD (Date of initial purchase)
+  nextRenewalDate?: string; // ISO format YYYY-MM-DD (or empty/undefined for lifetime)
   startDate?: string;
   paymentMethod?: string;
   status: SubscriptionStatus;
@@ -53,25 +54,12 @@ export interface RenewalAlert {
   color: string;
 }
 
-export interface PresetSubscription {
-  name: string;
-  category: SubscriptionCategory;
-  defaultCost: number;
-  billingCycle: BillingCycle;
-  color: string;
-  websiteUrl: string;
-  iconName: string;
-  description: string;
-  tags?: string[];
-}
-
 export type ViewMode = 'responsive' | 'web' | 'android';
 export type AppTab =
   | 'dashboard'
   | 'subscriptions'
   | 'payment'
   | 'analytics'
-  | 'customer'
   | 'reports'
   | 'settings'
   | 'calendar'

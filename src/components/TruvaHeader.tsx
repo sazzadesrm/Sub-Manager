@@ -12,10 +12,10 @@ import {
   Monitor,
   Smartphone,
   Layers,
-  Palette,
   LogOut,
   User,
-  Shield
+  Shield,
+  Settings
 } from 'lucide-react';
 
 interface TruvaHeaderProps {
@@ -32,8 +32,6 @@ export const TruvaHeader: React.FC<TruvaHeaderProps> = ({
     setViewMode,
     darkMode,
     setDarkMode,
-    theme,
-    setTheme,
     searchQuery,
     setSearchQuery,
     alerts,
@@ -41,12 +39,13 @@ export const TruvaHeader: React.FC<TruvaHeaderProps> = ({
     signOut,
     currency,
     setCurrency,
+    setIsProfileModalOpen,
+    setActiveTab,
   } = useSubscriptions();
 
   const [selectedView, setSelectedView] = useState('All Products');
   const [isViewDropdownOpen, setIsViewDropdownOpen] = useState(false);
   const [isCurrencyDropdownOpen, setIsCurrencyDropdownOpen] = useState(false);
-  const [isThemeDropdownOpen, setIsThemeDropdownOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
 
   const viewsList = ['All Products', 'SaaS Subscriptions', 'Cloud Infrastructure', 'Direct Consumer', 'Trials & Grace'];
@@ -60,7 +59,7 @@ export const TruvaHeader: React.FC<TruvaHeaderProps> = ({
         {/* Sidebar Collapse Toggle */}
         <button
           onClick={onToggleSidebar}
-          className="p-1.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors hidden sm:flex items-center justify-center ml-1"
+          className="p-1.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors hidden sm:flex items-center justify-center ml-1 cursor-pointer"
           title={sidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
         >
           {sidebarCollapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
@@ -73,7 +72,7 @@ export const TruvaHeader: React.FC<TruvaHeaderProps> = ({
         <div className="hidden md:flex items-center bg-neutral-100 dark:bg-neutral-800 p-1 rounded-xl border border-neutral-200/60 dark:border-neutral-700/60">
           <button
             onClick={() => setViewMode('responsive')}
-            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
               viewMode === 'responsive'
                 ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-2xs'
                 : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
@@ -85,7 +84,7 @@ export const TruvaHeader: React.FC<TruvaHeaderProps> = ({
           </button>
           <button
             onClick={() => setViewMode('web')}
-            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
               viewMode === 'web'
                 ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-2xs'
                 : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
@@ -97,7 +96,7 @@ export const TruvaHeader: React.FC<TruvaHeaderProps> = ({
           </button>
           <button
             onClick={() => setViewMode('android')}
-            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
               viewMode === 'android'
                 ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-2xs'
                 : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
@@ -109,54 +108,11 @@ export const TruvaHeader: React.FC<TruvaHeaderProps> = ({
           </button>
         </div>
 
-        {/* Theme Management Dropdown */}
-        <div className="relative">
-          <button
-            onClick={() => setIsThemeDropdownOpen(prev => !prev)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 transition-colors"
-            title="Select Dashboard Theme Layout"
-          >
-            <Palette size={14} className="text-indigo-500" />
-            <span className="hidden sm:inline capitalize">{theme}</span>
-            <ChevronDown size={12} className="text-neutral-400" />
-          </button>
-
-          {isThemeDropdownOpen && (
-            <div className="absolute right-0 mt-1 w-44 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-2xl shadow-xl py-1.5 z-40 text-xs">
-              <div className="px-3 py-1 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-                Theme Presets
-              </div>
-              {[
-                { id: 'munemind', label: 'Munemind (Image 1)' },
-                { id: 'truva', label: 'Truva Dashboard' },
-                { id: 'emerald', label: 'Emerald Slate' },
-                { id: 'ocean', label: 'Ocean Breeze' },
-              ].map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => {
-                    setTheme(t.id as any);
-                    setIsThemeDropdownOpen(false);
-                  }}
-                  className={`w-full text-left px-3.5 py-2 transition-colors flex items-center justify-between ${
-                    theme === t.id
-                      ? 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400 font-bold'
-                      : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'
-                  }`}
-                >
-                  <span>{t.label}</span>
-                  {theme === t.id && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
         {/* "All Products" Filter Dropdown */}
         <div className="relative hidden sm:block">
           <button
             onClick={() => setIsViewDropdownOpen(prev => !prev)}
-            className="flex items-center gap-2 px-3 py-1.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 transition-colors cursor-pointer"
           >
             <span>{selectedView}</span>
             <ChevronDown size={13} className="text-neutral-400" />
@@ -171,7 +127,7 @@ export const TruvaHeader: React.FC<TruvaHeaderProps> = ({
                     setSelectedView(v);
                     setIsViewDropdownOpen(false);
                   }}
-                  className={`w-full text-left px-3.5 py-2 transition-colors ${
+                  className={`w-full text-left px-3.5 py-2 transition-colors cursor-pointer ${
                     selectedView === v
                       ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-bold'
                       : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700'
@@ -189,7 +145,7 @@ export const TruvaHeader: React.FC<TruvaHeaderProps> = ({
           <Search size={14} className="absolute left-3 top-2 text-neutral-400" />
           <input
             type="text"
-            placeholder="Search..."
+            placeholder="Search subscriptions..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             className="w-full pl-8 pr-3 py-1 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-xs text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
@@ -200,7 +156,7 @@ export const TruvaHeader: React.FC<TruvaHeaderProps> = ({
         <div className="relative">
           <button
             onClick={() => setIsCurrencyDropdownOpen(prev => !prev)}
-            className="px-2.5 py-1 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-1 hover:bg-neutral-200 transition-colors"
+            className="px-2.5 py-1 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-1 hover:bg-neutral-200 transition-colors cursor-pointer"
           >
             <span>{currency}</span>
             <ChevronDown size={11} className="text-neutral-400" />
@@ -214,7 +170,7 @@ export const TruvaHeader: React.FC<TruvaHeaderProps> = ({
                     setCurrency(c);
                     setIsCurrencyDropdownOpen(false);
                   }}
-                  className={`w-full text-left px-3 py-1.5 font-medium ${
+                  className={`w-full text-left px-3 py-1.5 font-medium cursor-pointer ${
                     currency === c ? 'text-blue-600 font-bold bg-blue-50 dark:bg-blue-950' : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'
                   }`}
                 >
@@ -228,8 +184,9 @@ export const TruvaHeader: React.FC<TruvaHeaderProps> = ({
         {/* Notification Bell */}
         <div className="relative">
           <button
-            className="p-1.5 text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-            title="Notifications"
+            onClick={() => setActiveTab('calendar')}
+            className="p-1.5 text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
+            title="Notifications & Upcoming Renewals"
           >
             <Bell size={17} />
             {alerts.length > 0 && (
@@ -241,13 +198,13 @@ export const TruvaHeader: React.FC<TruvaHeaderProps> = ({
         {/* Dark / Light Theme Toggle */}
         <button
           onClick={() => setDarkMode(prev => !prev)}
-          className="p-1.5 text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+          className="p-1.5 text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
           title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
         >
           {darkMode ? <Sun size={17} /> : <Moon size={17} />}
         </button>
 
-        {/* User Account Profile with Sign Out dropdown */}
+        {/* User Account Profile with Profile Customization & Sign Out */}
         <div className="relative pl-1 border-l border-neutral-200 dark:border-neutral-800">
           <button
             onClick={() => setIsUserDropdownOpen(prev => !prev)}
@@ -271,7 +228,7 @@ export const TruvaHeader: React.FC<TruvaHeaderProps> = ({
           </button>
 
           {isUserDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-60 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-xl py-2 z-50 text-xs">
+            <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-xl py-2 z-50 text-xs">
               <div className="px-4 py-2 border-b border-neutral-100 dark:border-neutral-800">
                 <div className="font-bold text-neutral-900 dark:text-white text-sm truncate">
                   {currentUser?.name || 'Signed In User'}
@@ -279,7 +236,7 @@ export const TruvaHeader: React.FC<TruvaHeaderProps> = ({
                 <div className="text-neutral-500 dark:text-neutral-400 text-[11px] truncate">
                   {currentUser?.email || ''}
                 </div>
-                <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-[10px] font-bold uppercase">
+                <div className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-[10px] font-bold uppercase">
                   <Shield size={10} />
                   <span>{currentUser?.role || 'Owner'}</span>
                 </div>
@@ -289,9 +246,33 @@ export const TruvaHeader: React.FC<TruvaHeaderProps> = ({
                 <button
                   onClick={() => {
                     setIsUserDropdownOpen(false);
+                    setIsProfileModalOpen(true);
+                  }}
+                  className="w-full px-4 py-2 text-left text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 font-medium transition-colors cursor-pointer"
+                >
+                  <User size={14} className="text-blue-600 dark:text-blue-400" />
+                  <span>Customize Profile</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsUserDropdownOpen(false);
+                    setActiveTab('settings');
+                  }}
+                  className="w-full px-4 py-2 text-left text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 font-medium transition-colors cursor-pointer"
+                >
+                  <Settings size={14} className="text-neutral-400" />
+                  <span>System Settings</span>
+                </button>
+
+                <div className="my-1 border-t border-neutral-100 dark:border-neutral-800" />
+
+                <button
+                  onClick={() => {
+                    setIsUserDropdownOpen(false);
                     signOut();
                   }}
-                  className="w-full px-4 py-2 text-left text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2 font-semibold transition-colors"
+                  className="w-full px-4 py-2 text-left text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2 font-semibold transition-colors cursor-pointer"
                 >
                   <LogOut size={14} />
                   <span>Sign Out</span>
